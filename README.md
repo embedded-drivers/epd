@@ -1,0 +1,7 @@
+# EPD driver
+
+
+
+EPD_2IN13_SendCommand(0x01); // DRIVER_OUTPUT_CONTROL
+EPD_2IN13_SendData((EPD_2IN13_HEIGHT - 1) & 0xFF);
+EPD_2IN13_SendData(((EPD_2IN13_HEIGHT - 1) >> 8) & 0xFF);
