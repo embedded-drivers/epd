@@ -1,7 +1,17 @@
 # EPD driver
 
+EPD = Electronic Paper Display
 
+NOTE: This is a personal POC project.
 
-EPD_2IN13_SendCommand(0x01); // DRIVER_OUTPUT_CONTROL
-EPD_2IN13_SendData((EPD_2IN13_HEIGHT - 1) & 0xFF);
-EPD_2IN13_SendData(((EPD_2IN13_HEIGHT - 1) >> 8) & 0xFF);
+The only board I got is EPD_2IN13(v1).
+
+## Board Info
+
+### EPD_2IN13(v1)
+
+```
+Label: HINK-E0213A04-G01
+Driver IC: IL3895
+122 x 250
+```

@@ -2,7 +2,7 @@
 
 #[repr(u8)]
 pub enum Command {
-    /// Set the number of gate
+    /// Set the number of gate.
     ///
     /// <<A:u8, 0:b5, B:b3>>
     DriverOutputControl = 0x01,
@@ -61,25 +61,65 @@ pub enum Command {
 
     PanelBreakDetection = 0x23,
 
+    /// Data entries will be written into the RAM until another command is written.
+    /// Address pointers will advance accordingly.
     WriteRam = 0x24,
-
+    /// Write VCOM register.
+    ///
+    /// A[7:0] = 00h [POR]
+    ///
+    /// | A[7:0] | VCOM | A[7:0] | VCOM |
+    /// | ------ | ---- | ------ | ---- |
+    /// | 0Fh    | -0.2 | 5Ah    | -1.7 |
+    /// | 14h    | -0.3 | 5Fh    | -1.8 |
+    /// | 19h    | -0.4 | 64h    | -1.9 |
+    /// | 1Eh    | -0.5 | 69h    | -2   |
+    /// | 23h    | -0.6 | 6Eh    | -2.1 |
+    /// | 28h    | -0.7 | 73h    | -2.2 |
+    /// | 2Dh    | -0.8 | 78h    | -2.3 |
+    /// | 32h    | -0.9 | 7Dh    | -2.4 |
+    /// | 37h    | -1   | 82h    | -2.5 |
+    /// | 3Ch    | -1.1 | 87h    | -2.6 |
+    /// | 41h    | -1.2 | 8Ch    | -2.7 |
+    /// | 46h    | -1.3 | 91h    | -2.8 |
+    /// | 4Bh    | -1.4 | 96h    | -2.9 |
+    /// | 50h    | -1.5 | 9Bh    | -3   |
+    /// | 55h    | -1.6 |        |      |
     WriteVcomRegister = 0x2c,
     /// Panel-Break flag, Chip ID
     StatusBitRead = 0x2f,
     /// Write LUT register from MCU interface [30 bytes]
     /// (excluding the VSH/VSL and Dummy bit)
     WriteLutRegister = 0x32,
+    /// Set number of dummy line period.
     /// LUT byte 29, the content of dummy line.
+    ///
+    /// A[6:0]: Number of dummy line period in term of TGate
+    ///
+    /// Default: 0x06
+    ///
+    /// Driver: 0x1a, 4 dummy lines per gate
+    ///
+    /// Available setting 0 to 127.
     SetDummyLinePeriod = 0x3a,
-    /// LUT byte 31, the content of gate line width,
-    SetGatelineWidth = 0x3b,
+    /// Set Gate line width (TGate) A[3:0] Line width in us.
+    /// LUT byte 31, the content of gate line width.
+    ///
+    /// A[3:0]: Line width in us, 0 to 8
+    ///
+    /// Default: 0x0b = 0b1011, TGate = 78us
+    /// Driver: 0x08, 2us/line
+    ///
+    /// NOTE: Default value will give 50Hz Frame frequency under 6 dummy line pulse setting.
+    SetGateLineWidth = 0x3b,
+    /// Select border waveform for VBD.
     BorderWaveformControl = 0x3c,
     /// Specify the start/end positions of the window address in the X direction by an address unit.
     ///
     /// x point must be the multiple of 8 or the last 3 bits will be ignored
-    SetRamXAaddressStartEndPosition = 0x44,
+    SetRamXAddressStartEndPosition = 0x44,
     /// Specify the start/end positions of the window address in the Y direction by an address unit.
-    SetRamYAaddressStartEndPosition = 0x45,
+    SetRamYAddressStartEndPosition = 0x45,
     SetRamXAddressCounter = 0x4e,
     SetRamYAddressCounter = 0x4f,
 }
