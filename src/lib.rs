@@ -1,5 +1,8 @@
 #![no_std]
+#![feature(fixed_size_array, slice_fill)]
 
-pub mod command;
 pub mod display;
-pub mod lut;
+pub mod drivers;
+pub mod interface;
+
+pub use interface::Interface;

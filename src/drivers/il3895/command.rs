@@ -37,7 +37,7 @@ pub enum Command {
     /// - AM = 0, the address counter is updated in the X direction. [POR]
     /// - AM = 1, the address counter is updated in the Y direction.
     DataEntryModeSetting = 0x11,
-    SwReset = 0x12,
+    SoftReset = 0x12,
     /// <<A:u8, b:b4, 0:b4>>
     TemperatureSensorControl = 0x1a,
     /// Activate Display Update Sequence
