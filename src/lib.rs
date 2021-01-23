@@ -1,5 +1,5 @@
 #![no_std]
-#![feature(fixed_size_array, slice_fill)]
+#![feature(fixed_size_array)]
 
 pub mod display;
 pub mod drivers;
