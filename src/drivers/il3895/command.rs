@@ -1,5 +1,6 @@
 //! Command Table
 
+/// Command for IL3895.
 #[repr(u8)]
 pub enum Command {
     /// Set the number of gate.

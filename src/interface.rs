@@ -11,7 +11,6 @@ pub enum DisplayError {
     BUSYError,
 }
 
-
 /// Trait implemented by displays to provide implemenation of core functionality.
 pub trait DisplayInterface {
     /// Send a command to the controller.
