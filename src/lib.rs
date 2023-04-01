@@ -47,7 +47,7 @@ where
     where
         DELAY: embedded_hal::blocking::delay::DelayUs<u32>,
     {
-        D::wake_up(&mut self.interface, delay)?
+        D::wake_up(&mut self.interface, delay)?;
         D::set_shape(&mut self.interface, S::WIDTH as _, S::HEIGHT as _)?;
         Ok(())
     }
@@ -150,7 +150,7 @@ where
     where
         DELAY: embedded_hal::blocking::delay::DelayUs<u32>,
     {
-        D::wake_up(&mut self.interface, delay)?
+        D::wake_up(&mut self.interface, delay)?;
         D::set_shape(&mut self.interface, S::WIDTH as _, S::HEIGHT as _)?;
         Ok(())
     }
