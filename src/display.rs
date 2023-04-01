@@ -6,17 +6,11 @@
 //! The flush is not part of embedded-graphics API.
 
 use core::convert::TryInto;
-use core::marker::PhantomData;
 use core::mem;
 
-//use display_interface::{DataFormat, DisplayError, WriteOnlyDataCommand};
-use crate::interface::{DisplayError, DisplayInterface};
 use embedded_graphics::{
     draw_target::DrawTarget, pixelcolor::BinaryColor, prelude::*, primitives::Rectangle,
 };
-
-// use crate::drivers::il3895::command::Command;
-// use crate::drivers::il3895::lut::LUT_FULL_UPDATE;
 
 /// Rotation of the display.
 #[derive(Clone, Copy, Debug)]
@@ -106,7 +100,10 @@ impl DisplaySize for DisplaySize400x300 {
 
 // TODO: active ON/OFF pixel
 #[derive(Clone)]
-pub struct FrameBuffer<SIZE: DisplaySize> {
+pub struct FrameBuffer<SIZE: DisplaySize>
+where
+    [(); SIZE::N]:,
+{
     buf: [u8; SIZE::N],
     rotation: DisplayRotation,
     mirroring: Mirroring,
@@ -114,6 +111,8 @@ pub struct FrameBuffer<SIZE: DisplaySize> {
 }
 
 impl<SIZE: DisplaySize> FrameBuffer<SIZE>
+where
+    [(); SIZE::N]:,
 {
     pub fn new() -> Self {
         let buf = unsafe { mem::zeroed() };
@@ -127,16 +126,9 @@ impl<SIZE: DisplaySize> FrameBuffer<SIZE>
     }
 
     pub fn new_inverted() -> Self {
-        let mut buf: [u8; (SIZE::WIDTH / 8 + (SIZE::WIDTH % 8 != 0) as usize) * SIZE::HEIGHT] =
-            unsafe { mem::zeroed() };
-        buf.fill(0xff);
-
-        Self {
-            buf,
-            rotation: DisplayRotation::Rotate0,
-            mirroring: Mirroring::None,
-            inverted: true,
-        }
+        let mut this = Self::new();
+        this.buf.fill(0xff);
+        this
     }
 
     pub fn fill(&mut self, color: BinaryColor) {
@@ -234,20 +226,26 @@ impl<S: DisplaySize> OriginDimensions for FrameBuffer<S, { S::N }> {
 */
 
 impl<SIZE: DisplaySize> Dimensions for FrameBuffer<SIZE>
+where
+    [(); SIZE::N]:,
 {
     fn bounding_box(&self) -> Rectangle {
         match self.rotation {
-            DisplayRotation::Rotate0 | DisplayRotation::Rotate180 => {
-                Rectangle::new(Point::zero(), Size::new(SIZE::WIDTH as _, SIZE::HEIGHT as _))
-            }
-            _ => Rectangle::new(Point::zero(), Size::new(SIZE::HEIGHT as _, SIZE::WIDTH as _)),
+            DisplayRotation::Rotate0 | DisplayRotation::Rotate180 => Rectangle::new(
+                Point::zero(),
+                Size::new(SIZE::WIDTH as _, SIZE::HEIGHT as _),
+            ),
+            _ => Rectangle::new(
+                Point::zero(),
+                Size::new(SIZE::HEIGHT as _, SIZE::WIDTH as _),
+            ),
         }
     }
 }
 
-impl<const WIDTH: usize, const HEIGHT: usize> DrawTarget for FrameBuffer<WIDTH, HEIGHT>
+impl<SIZE: DisplaySize> DrawTarget for FrameBuffer<SIZE>
 where
-    [(); (WIDTH / 8 + (WIDTH % 8 != 0) as usize) * HEIGHT]:,
+    [(); SIZE::N]:,
 {
     type Color = BinaryColor;
     type Error = core::convert::Infallible;

@@ -20,23 +20,19 @@ pub use interface::EPDInterface;
 
 pub mod drivers;
 
-pub struct EPD<
-    I: DisplayInterface,
-    S: DisplaySize,
-    D: Driver,
-    const WIDTH: usize = { S::WIDTH },
-    const HEIGHT: usize = { S::HEIGHT },
->
-//[(); (WIDTH / 8 + (WIDTH % 8 != 0) as usize) * HEIGHT]:,
+pub struct EPD<I: DisplayInterface, S: DisplaySize, D: Driver>
 where
-    [(); { (WIDTH / 8 + (WIDTH % 8 != 0) as usize) * HEIGHT }]:,
+    [(); S::N]:,
 {
     pub interface: I,
-    pub framebuf: FrameBuffer<WIDTH, HEIGHT>,
+    pub framebuf: FrameBuffer<S>,
     _phantom: PhantomData<(S, D)>,
 }
 
-impl<I: DisplayInterface, S: DisplaySize, D: Driver> EPD<I, S, D> {
+impl<I: DisplayInterface, S: DisplaySize, D: Driver> EPD<I, S, D>
+where
+    [(); S::N]:,
+{
     pub fn new(interface: I) -> Self {
         Self {
             interface,
@@ -75,20 +71,18 @@ impl<I: DisplayInterface, S: DisplaySize, D: Driver> EPD<I, S, D> {
     }
 }
 
-impl<I: DisplayInterface, S: DisplaySize, D: Driver, const WIDTH: usize, const HEIGHT: usize>
-    Dimensions for EPD<I, S, D, WIDTH, HEIGHT>
+impl<I: DisplayInterface, S: DisplaySize, D: Driver> Dimensions for EPD<I, S, D>
 where
-    [(); { (WIDTH / 8 + (WIDTH % 8 != 0) as usize) * HEIGHT }]:,
+    [(); S::N]:,
 {
     fn bounding_box(&self) -> Rectangle {
         self.framebuf.bounding_box()
     }
 }
 
-impl<I: DisplayInterface, S: DisplaySize, D: Driver, const WIDTH: usize, const HEIGHT: usize>
-    DrawTarget for EPD<I, S, D, WIDTH, HEIGHT>
+impl<I: DisplayInterface, S: DisplaySize, D: Driver> DrawTarget for EPD<I, S, D>
 where
-    [(); { (WIDTH / 8 + (WIDTH % 8 != 0) as usize) * HEIGHT }]:,
+    [(); S::N]:,
 {
     type Color = embedded_graphics::pixelcolor::BinaryColor;
     type Error = core::convert::Infallible;
