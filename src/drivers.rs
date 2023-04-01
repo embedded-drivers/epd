@@ -29,14 +29,15 @@ pub trait Driver {
     fn turn_on_display<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error>;
 
     fn sleep<DI: DisplayInterface, DELAY: DelayUs<u32>>(
-        di: &mut DI,
-        delay: &mut DELAY,
+        _di: &mut DI,
+        _delay: &mut DELAY,
     ) -> Result<(), Self::Error> {
         Ok(())
     }
 }
 
 /// Red/Black/White. 400 source outputs, 300 gate outputs
+/// or Red/Black. 400 source outputs, 300 gate outputs
 pub struct SSD1619A;
 
 impl Driver for SSD1619A {
@@ -52,7 +53,6 @@ impl Driver for SSD1619A {
         di.send_command(0x12)?; //swreset
         di.busy_wait();
 
-        // 3
         // Set analogue then digital block control
         di.send_command_data(0x74, &[0x54])?;
         di.send_command_data(0x7e, &[0x3b])?;
@@ -63,10 +63,9 @@ impl Driver for SSD1619A {
 
         di.send_command_data(0x01, &[0x2b, 0x01, 0x00])?; // Driver Output Control - set mux as 300
 
-        di.send_command_data(0x11, &[0x00])?; // data entry mode
+        di.send_command_data(0x11, &[0b11])?; // data entry mode, X inc, Y inc
 
         // 0x44, 0x45, ram x,y start,end
-
         di.send_command_data(0x03, &[0x20])?; // Gate Driving Voltage Control
 
         // A[7:0] = 41h [POR], VSH1 at 15V
@@ -84,9 +83,7 @@ impl Driver for SSD1619A {
 
         di.send_command_data(0x18, &[0x80])?;
         // load temperature and waveform setting.
-        // di.send_command_data(0x22, &[0xb1])?;
-
-        di.send_command_data(0x22, &[0xb9])?;
+        di.send_command_data(0x22, &[0xb1])?;
 
         di.send_command(0x20)?;
         di.busy_wait();
@@ -101,8 +98,10 @@ impl Driver for SSD1619A {
         // Set RAM Y - address Start / End position
         di.send_command_data(
             0x45,
-            &[0x00, 0x00, ((y - 1) >> 8) as u8, ((y - 1) & 0xff) as u8],
+            &[0x00, 0x00, ((y - 1) & 0xff) as u8, ((y - 1) >> 8) as u8],
         )?;
+        di.send_command_data(0x4e, &[0])?; // x start
+        di.send_command_data(0x4f, &[0, 0])?; // y start
 
         Ok(())
     }
@@ -166,7 +165,7 @@ impl Driver for SSD1608 {
         di.send_command_data(0x3b, &[0x08]).unwrap();
 
         // Border Waveform Control
-        // 00 VSS => 相当于无电场
+        // 00 VSS =>
         // 01 VSH => very black
         // 10 VSL => gray?
         // 11 HiZ => no change

@@ -4,17 +4,31 @@ EPD = Electronic Paper Display
 
 NOTE: This is a personal POC project.
 
-The only board I got is EPD_2IN13(v1).
+## How to use
 
-## Board Info
+```rust
+    let spi = Spi::new(
+        p.SPI2,
+        p.PB10,
+        p.PC3,
+        p.PC2, // not used
+        NoDma,
+        NoDma,
+        Hertz(1_000_000),
+        embassy_stm32::spi::Config::default(),
+    );
 
-### EPD_2IN13(v1)
+    let cs = Output::new(p.PC7, Level::Low, Speed::VeryHigh);
+    let dc = Output::new(p.PC9, Level::High, Speed::VeryHigh);
+    let rst = Output::new(p.PA11, Level::Low, Speed::VeryHigh);
+    let busy = Input::new(p.PG9, Pull::None);
 
+    let di = EPDInterface::new(spi, dc, cs, rst, busy);
+    let mut display: TriColorEPD<_, DisplaySize400x300, SSD1619A> = TriColorEPD::new(di);
+
+    display.init(&mut delay);
+
+    // draw display here
+
+    display.display_frame();
 ```
-Label: HINK-E0213A04-G01
-Driver IC: IL3895
-122 x 250
-```
-
-Under default rotation settng, the top side is the oppsite of FPC line.
-A convenient setting is Rotation270.
