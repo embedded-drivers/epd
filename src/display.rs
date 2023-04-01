@@ -5,17 +5,18 @@
 //! The buffer has to be flushed to update the display after a group of draw calls has been completed.
 //! The flush is not part of embedded-graphics API.
 
-use core::array::FixedSizeArray;
 use core::convert::TryInto;
 use core::marker::PhantomData;
 use core::mem;
 
 //use display_interface::{DataFormat, DisplayError, WriteOnlyDataCommand};
 use crate::interface::{DisplayError, DisplayInterface};
-use embedded_graphics::{drawable::Pixel, pixelcolor::BinaryColor, prelude::*, DrawTarget};
+use embedded_graphics::{
+    draw_target::DrawTarget, pixelcolor::BinaryColor, prelude::*, primitives::Rectangle,
+};
 
-use crate::drivers::il3895::command::Command;
-use crate::drivers::il3895::lut::LUT_FULL_UPDATE;
+// use crate::drivers::il3895::command::Command;
+// use crate::drivers::il3895::lut::LUT_FULL_UPDATE;
 
 /// Rotation of the display.
 #[derive(Clone, Copy, Debug)]
@@ -46,243 +47,226 @@ pub trait DisplaySize {
     /// Height in pixels
     const HEIGHT: usize;
 
-    type Buffer: FixedSizeArray<u8>;
+    const N: usize;
+}
+
+#[derive(Clone, Copy)]
+pub struct DisplaySize128x296;
+
+impl DisplaySize for DisplaySize128x296 {
+    const WIDTH: usize = 128;
+    const HEIGHT: usize = 296;
+
+    const N: usize = (Self::WIDTH / 8) * Self::HEIGHT;
+}
+
+/// SSD1608/IL3820 in cascade mode 2x 200x300
+#[derive(Clone, Copy)]
+pub struct DisplaySize200x300;
+
+impl DisplaySize for DisplaySize200x300 {
+    const WIDTH: usize = 200;
+    const HEIGHT: usize = 300;
+
+    const N: usize = (Self::WIDTH / 8) * Self::HEIGHT;
 }
 
 /// For 2in13 PPD with Black, Red/Yellow and White, WIDTH=104, HEIGHT=212.
+#[derive(Clone, Copy)]
 pub struct DisplaySize212x104;
 
 impl DisplaySize for DisplaySize212x104 {
     const WIDTH: usize = 104;
     const HEIGHT: usize = 212;
 
-    type Buffer = [u8; (Self::WIDTH / 8 + 1) * Self::HEIGHT];
+    const N: usize = (Self::WIDTH / 8 + 1) * Self::HEIGHT;
 }
 
 /// For 2in13 EPD with Black and White, WIDTH=122, HEIGHT=250.
+#[derive(Clone, Copy)]
 pub struct DisplaySize250x122;
 
 impl DisplaySize for DisplaySize250x122 {
     const WIDTH: usize = 122;
     const HEIGHT: usize = 250;
 
-    type Buffer = [u8; (Self::WIDTH / 8 + 1) * Self::HEIGHT];
+    const N: usize = (Self::WIDTH / 8 + 1) * Self::HEIGHT;
 }
 
-pub struct FrameBuffer<S: DisplaySize> {
-    buf: S::Buffer,
+// 4in2
+#[derive(Clone, Copy)]
+pub struct DisplaySize400x300;
+
+impl DisplaySize for DisplaySize400x300 {
+    const WIDTH: usize = 400;
+    const HEIGHT: usize = 300;
+
+    const N: usize = (Self::WIDTH / 8) * Self::HEIGHT;
+}
+
+// TODO: active ON/OFF pixel
+#[derive(Clone)]
+pub struct FrameBuffer<SIZE: DisplaySize> {
+    buf: [u8; SIZE::N],
     rotation: DisplayRotation,
     mirroring: Mirroring,
-    _marker: PhantomData<S>,
+    inverted: bool,
 }
 
-impl<S: DisplaySize> FrameBuffer<S> {
-    fn new() -> Self {
-        let mut buf: S::Buffer = unsafe { mem::zeroed() };
-        buf.as_mut_slice().iter_mut().for_each(|b| *b = 0xff);
+impl<SIZE: DisplaySize> FrameBuffer<SIZE>
+{
+    pub fn new() -> Self {
+        let buf = unsafe { mem::zeroed() };
+
         Self {
             buf,
             rotation: DisplayRotation::Rotate0,
             mirroring: Mirroring::None,
-            _marker: PhantomData,
+            inverted: false,
         }
     }
 
+    pub fn new_inverted() -> Self {
+        let mut buf: [u8; (SIZE::WIDTH / 8 + (SIZE::WIDTH % 8 != 0) as usize) * SIZE::HEIGHT] =
+            unsafe { mem::zeroed() };
+        buf.fill(0xff);
+
+        Self {
+            buf,
+            rotation: DisplayRotation::Rotate0,
+            mirroring: Mirroring::None,
+            inverted: true,
+        }
+    }
+
+    pub fn fill(&mut self, color: BinaryColor) {
+        let color_raw = match (color, self.inverted) {
+            (BinaryColor::On, true) | (BinaryColor::Off, false) => 0xff,
+            (BinaryColor::Off, true) | (BinaryColor::On, false) => 0x00,
+        };
+        self.buf.fill(color_raw)
+    }
+
+    pub fn set_rotation(&mut self, rotation: i32) {
+        self.rotation = match rotation {
+            0 => DisplayRotation::Rotate0,
+            90 => DisplayRotation::Rotate90,
+            180 => DisplayRotation::Rotate180,
+            270 => DisplayRotation::Rotate270,
+            _ => DisplayRotation::Rotate0,
+        };
+    }
+
+    pub fn set_mirroring(&mut self, mirroring: Mirroring) {
+        self.mirroring = mirroring;
+    }
+
+    pub fn set_inverted(&mut self, inverted: bool) {
+        self.inverted = inverted;
+        self.buf.iter_mut().for_each(|b| *b = !*b);
+    }
+
     fn set_pixel(&mut self, x: usize, y: usize, pixel: bool) {
-        let width_in_byte = S::WIDTH / 8 + (S::WIDTH % 8 != 0) as usize;
+        let width_in_byte = SIZE::WIDTH / 8 + (SIZE::WIDTH % 8 != 0) as usize;
 
         let (width, height) = match self.rotation {
-            DisplayRotation::Rotate0 | DisplayRotation::Rotate180 => (S::WIDTH, S::HEIGHT),
-            _ => (S::HEIGHT, S::WIDTH),
+            DisplayRotation::Rotate0 | DisplayRotation::Rotate180 => (SIZE::WIDTH, SIZE::HEIGHT),
+            _ => (SIZE::HEIGHT, SIZE::WIDTH),
         };
 
         if x > width || y > height {
+            defmt::error!("overflow set {},{}  {}", x, y, pixel);
+
             return; // TODO: signal this type of error
         }
 
         let (mut x, mut y) = match self.rotation {
             DisplayRotation::Rotate0 => (x, y),
-            DisplayRotation::Rotate90 => (S::WIDTH - y - 1, x),
-            DisplayRotation::Rotate180 => (S::WIDTH - x - 1, S::HEIGHT - y - 1),
-            DisplayRotation::Rotate270 => (y, S::HEIGHT - x - 1),
+            DisplayRotation::Rotate90 => (SIZE::WIDTH - y - 1, x),
+            DisplayRotation::Rotate180 => (SIZE::WIDTH - x - 1, SIZE::HEIGHT - y - 1),
+            DisplayRotation::Rotate270 => (y, SIZE::HEIGHT - x - 1),
         };
 
         match self.mirroring {
             Mirroring::Horizontal => {
-                x = S::WIDTH - x - 1;
+                x = SIZE::WIDTH - x - 1;
             }
             Mirroring::Vertical => {
-                y = S::HEIGHT - y - 1;
+                y = SIZE::HEIGHT - y - 1;
             }
             Mirroring::Origin => {
-                x = S::WIDTH - x - 1;
-                y = S::HEIGHT - y - 1;
+                x = SIZE::WIDTH - x - 1;
+                y = SIZE::HEIGHT - y - 1;
             }
             _ => (),
         }
 
-        if x > S::WIDTH || y > S::HEIGHT {
+        if x > SIZE::WIDTH || y > SIZE::HEIGHT {
+            defmt::error!("set {},{}  {}", x, y, pixel);
+
             return; // TODO: signal error
         }
 
         // For black white color
         let byte_offset = y * width_in_byte + x / 8;
-        if pixel {
-            self.buf.as_mut_slice()[byte_offset] &= !(0x80 >> (x % 8));
-        } else {
+        if pixel ^ self.inverted {
             self.buf.as_mut_slice()[byte_offset] |= 0x80 >> (x % 8);
+        } else {
+            self.buf.as_mut_slice()[byte_offset] &= !(0x80 >> (x % 8));
         }
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.buf
+    }
+
+    fn size(&self) -> Size {
+        Size::new(SIZE::WIDTH as _, SIZE::HEIGHT as _)
     }
 }
 
-/// EPaperDisplay SPI display interface.
-pub struct EPaperDisplay<DI, SIZE: DisplaySize> {
-    di: DI,
-    framebuffer: FrameBuffer<SIZE>,
+/*
+impl<S: DisplaySize> OriginDimensions for FrameBuffer<S, { S::N }> {
+    fn size(&self) -> Size {
+        Size::new(S::WIDTH as _, S::HEIGHT as _)
+    }
 }
+*/
 
-impl<DI, SIZE> EPaperDisplay<DI, SIZE>
-where
-    DI: DisplayInterface,
-    SIZE: DisplaySize,
+impl<SIZE: DisplaySize> Dimensions for FrameBuffer<SIZE>
 {
-    pub fn new(di: DI) -> Self {
-        EPaperDisplay {
-            di,
-            framebuffer: FrameBuffer::new(),
-        }
-    }
-
-    /// Consume the display interface and return
-    /// the underlying peripherial driver and GPIO pins used by it
-    pub fn release(self) -> DI {
-        self.di
-    }
-
-    /// Set the rotation of the display.
-    /// For most board setting, Rotate270 is the most convenient.
-    pub fn set_rotation(&mut self, rotation: DisplayRotation) {
-        self.framebuffer.rotation = rotation;
-    }
-
-    /// Set the mirroring of the display.
-    /// Some display requires mirroring of pixels(can also be implemented with oppsite X/Yscan direction).
-    /// This setting should be changed with rotation.
-    pub fn set_mirroring(&mut self, mirror: Mirroring) {
-        self.framebuffer.mirroring = mirror;
-    }
-
-    /// Do a soft reset and init the display.
-    pub fn init(&mut self) -> Result<(), DisplayError> {
-        // After SW reset, the IC will have Registers load with POR value,
-        // VCOM register loaded with OTP, and value IC enter idle mode.
-        self.di.busy_wait();
-        self.di.send_command(Command::SoftReset as u8)?;
-        self.di.busy_wait();
-
-        self.di.send_command(Command::DriverOutputControl as u8)?;
-        // MUX Gate lines, Gate scanning sequence and direction
-        self.di
-            .send_data(&[((SIZE::HEIGHT - 1) & 0xff) as u8, 0x00])?;
-
-        self.di.send_command(Command::WriteVcomRegister as u8)?;
-        self.di.send_data(&[0xa8])?;
-
-        self.di.send_command(Command::SetDummyLinePeriod as u8)?;
-        self.di.send_data(&[0x1a])?;
-
-        self.di.send_command(Command::SetGateLineWidth as u8)?;
-        self.di.send_data(&[0x08])?;
-
-        self.di.send_command(Command::BorderWaveformControl as u8)?;
-        self.di.send_data(&[0x63])?;
-
-        // NOTE: In epd, the data entry mode is not changed
-        self.di.send_command(Command::DataEntryModeSetting as u8)?;
-        // A[1:0] = 11, Y increment, X increment
-        // A[2]   =  0, increase X
-        self.di.send_data(&[0b011])?;
-
-        self.di.send_command(Command::WriteLutRegister as u8)?;
-        self.di.send_data(&LUT_FULL_UPDATE)?;
-        self.di.busy_wait();
-
-        Ok(())
-    }
-
-    /// Set drawing window
-    pub fn set_window(&mut self, x0: u16, y0: u16, x1: u16, y1: u16) -> Result<(), DisplayError> {
-        // x point must be the multiple of 8 or the last 3 bits will be ignored
-        self.di
-            .send_command(Command::SetRamXAddressStartEndPosition as u8)?;
-        self.di.send_data(&[(x0 >> 3) as u8, (x1 >> 3) as u8])?;
-        self.di
-            .send_command(Command::SetRamYAddressStartEndPosition as u8)?;
-        self.di.send_data(&[
-            (y0 & 0xff) as u8,
-            (y0 >> 8) as u8,
-            (y1 & 0xff) as u8,
-            (y1 >> 8) as u8,
-        ])?;
-        Ok(())
-    }
-
-    pub fn set_cursor(&mut self, x: u16, y: u16) -> Result<(), DisplayError> {
-        self.di.send_command(Command::SetRamXAddressCounter as u8)?;
-        self.di.send_data(&[(x >> 3) as u8])?;
-        self.di.send_command(Command::SetRamYAddressCounter as u8)?;
-        self.di.send_data(&[(y & 0xff) as u8, (y >> 8) as u8])?;
-        Ok(())
-    }
-
-    fn turn_on_display(&mut self) -> Result<(), DisplayError> {
-        self.di.send_command(Command::DisplayUpdateControl2 as u8)?;
-        self.di.send_data(&[0xC4])?;
-
-        self.di.send_command(Command::MasterActivation as u8)?;
-
-        // TERMINATE_FRAME_READ_WRITE
-        self.di.send_command(0xFF)?;
-
-        self.di.busy_wait();
-        Ok(())
-    }
-
-    /*
-    pub fn clear(&mut self) -> Result<(), DisplayError> {
-        self.set_window(0, 0, SIZE::WIDTH as _, SIZE::HEIGHT as _)?;
-        let byte_width = (SIZE::WIDTH / 8) + (SIZE::WIDTH % 8 > 0) as usize;
-
-        for j in 0..SIZE::HEIGHT {
-            self.set_cursor(0, j as _)?;
-            self.di.send_command(Command::WriteRam as u8)?;
-            // 0xff white
-            // 0x00 black
-            for _ in 0..byte_width {
-                self.di.send_data(&[0xff])?;
+    fn bounding_box(&self) -> Rectangle {
+        match self.rotation {
+            DisplayRotation::Rotate0 | DisplayRotation::Rotate180 => {
+                Rectangle::new(Point::zero(), Size::new(SIZE::WIDTH as _, SIZE::HEIGHT as _))
             }
+            _ => Rectangle::new(Point::zero(), Size::new(SIZE::HEIGHT as _, SIZE::WIDTH as _)),
         }
-        self.turn_on_display()
-    }
-    */
-
-    /// Write out data to a display.
-    pub fn flush(&mut self) -> Result<(), DisplayError> {
-        self.set_window(0, 0, SIZE::WIDTH as _, SIZE::HEIGHT as _)?;
-        let byte_width = (SIZE::WIDTH / 8) + (SIZE::WIDTH % 8 > 0) as usize;
-        for j in 0..SIZE::HEIGHT {
-            self.set_cursor(0, j as _)?;
-            self.di.send_command(Command::WriteRam as u8)?;
-            for i in 0..byte_width {
-                self.di
-                    .send_data(&[self.framebuffer.buf.as_slice()[j * byte_width + i]])?;
-            }
-        }
-        self.turn_on_display()
     }
 }
 
-impl<DI, SIZE> DrawTarget<BinaryColor> for EPaperDisplay<DI, SIZE>
+impl<const WIDTH: usize, const HEIGHT: usize> DrawTarget for FrameBuffer<WIDTH, HEIGHT>
+where
+    [(); (WIDTH / 8 + (WIDTH % 8 != 0) as usize) * HEIGHT]:,
+{
+    type Color = BinaryColor;
+    type Error = core::convert::Infallible;
+
+    fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
+    where
+        I: IntoIterator<Item = Pixel<Self::Color>>,
+    {
+        for Pixel(coord, color) in pixels.into_iter() {
+            match TryInto::<(u32, u32)>::try_into(coord) {
+                Ok((x, y)) => self.set_pixel(x as _, y as _, color.is_on()),
+                _ => (),
+            }
+        }
+
+        Ok(())
+    }
+}
+/*
 where
     DI: DisplayInterface,
     SIZE: DisplaySize,
@@ -327,3 +311,4 @@ where
         Ok(())
     }
 }
+*/
