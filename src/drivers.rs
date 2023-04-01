@@ -83,7 +83,7 @@ impl Driver for SSD1619A {
 
         di.send_command_data(0x18, &[0x80])?;
         // load temperature and waveform setting.
-        di.send_command_data(0x22, &[0xb1])?;
+        di.send_command_data(0x22, &[0xb9])?; // B1 or B9
 
         di.send_command(0x20)?;
         di.busy_wait();
