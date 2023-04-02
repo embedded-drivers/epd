@@ -10,7 +10,7 @@ use core::mem;
 
 use embedded_graphics::{
     draw_target::DrawTarget,
-    pixelcolor::{BinaryColor, Gray2},
+    pixelcolor::{BinaryColor, Gray2, Gray4, Gray8},
     prelude::*,
     primitives::Rectangle,
 };
@@ -220,14 +220,6 @@ where
     }
 }
 
-/*
-impl<S: DisplaySize> OriginDimensions for FrameBuffer<S, { S::N }> {
-    fn size(&self) -> Size {
-        Size::new(S::WIDTH as _, S::HEIGHT as _)
-    }
-}
-*/
-
 impl<SIZE: DisplaySize> Dimensions for FrameBuffer<SIZE>
 where
     [(); SIZE::N]:,
@@ -270,20 +262,158 @@ where
 
 pub trait GrayColorInBits {
     const BITS_PER_PIXEL: usize;
+    const MAX_VALUE: u8 = (1 << Self::BITS_PER_PIXEL) - 1;
+
+    fn from_u8(value: u8) -> Self;
 }
 
 impl GrayColorInBits for Gray2 {
     const BITS_PER_PIXEL: usize = 2;
+
+    fn from_u8(value: u8) -> Self {
+        Gray2::new(value)
+    }
+}
+impl GrayColorInBits for Gray4 {
+    const BITS_PER_PIXEL: usize = 4;
+
+    fn from_u8(value: u8) -> Self {
+        Gray4::new(value)
+    }
 }
 
 #[derive(Clone)]
 pub struct GrayFrameBuffer<SIZE: DisplaySize, C: GrayColor + GrayColorInBits>
 where
     [(); SIZE::N]:,
-    [(); SIZE::N * C::BITS_PER_PIXEL]:
+    [(); SIZE::N * C::BITS_PER_PIXEL]:,
 {
     buf: [u8; SIZE::N * C::BITS_PER_PIXEL],
     rotation: DisplayRotation,
     mirroring: Mirroring,
-    inverted: bool,
+}
+
+impl<SIZE: DisplaySize, C: GrayColor + GrayColorInBits> GrayFrameBuffer<SIZE, C>
+where
+    [(); SIZE::N]:,
+    [(); SIZE::N * C::BITS_PER_PIXEL]:,
+{
+    pub fn new() -> Self {
+        let mut buf: [u8; SIZE::N * C::BITS_PER_PIXEL] = unsafe { mem::zeroed() };
+        buf.fill(0xff);
+
+        Self {
+            buf,
+            rotation: DisplayRotation::Rotate0,
+            mirroring: Mirroring::None,
+        }
+    }
+
+    pub fn fill(&mut self, color: BinaryColor) {
+        if color.is_on() {
+            self.buf.fill(0xff);
+        } else {
+            self.buf.fill(0x00);
+        }
+    }
+
+    pub fn set_rotation(&mut self, rotation: i32) {
+        self.rotation = match rotation {
+            0 => DisplayRotation::Rotate0,
+            90 => DisplayRotation::Rotate90,
+            180 => DisplayRotation::Rotate180,
+            270 => DisplayRotation::Rotate270,
+            _ => DisplayRotation::Rotate0,
+        };
+    }
+
+    pub fn set_mirroring(&mut self, mirroring: Mirroring) {
+        self.mirroring = mirroring;
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.buf
+    }
+
+    pub(crate) fn get_pixel_in_raw_pos(&self, x: usize, y: usize) -> C {
+        if x >= SIZE::WIDTH || y >= SIZE::HEIGHT {
+            return C::WHITE;
+        }
+        let width_in_bits = SIZE::WIDTH * C::BITS_PER_PIXEL;
+        let width_in_byte = width_in_bits / 8 + (width_in_bits % 8 != 0) as usize;
+
+        let mut luma = 0;
+        for i in 0..C::BITS_PER_PIXEL {
+            let bit_offset = x * C::BITS_PER_PIXEL + i;
+            let byte_offset = width_in_byte * y + bit_offset / 8;
+            let bit_offset = 7 - bit_offset % 8;
+
+            let bit = self.buf[byte_offset] & (1 << bit_offset) != 0;
+            if bit {
+                luma |= 1 << i;
+            }
+        }
+        C::from_u8(luma)
+    }
+
+    pub fn set_pixel(&mut self, x: usize, y: usize, pixel: C) {
+        let (width, height) = match self.rotation {
+            DisplayRotation::Rotate0 | DisplayRotation::Rotate180 => (SIZE::WIDTH, SIZE::HEIGHT),
+            _ => (SIZE::HEIGHT, SIZE::WIDTH),
+        };
+
+        if x >= width || y >= height {
+            defmt::warn!("overflow set {},{}  {}", x, y, pixel.luma());
+            return;
+        }
+
+        let (mut x, mut y) = match self.rotation {
+            DisplayRotation::Rotate0 => (x, y),
+            DisplayRotation::Rotate90 => (SIZE::WIDTH - y - 1, x),
+            DisplayRotation::Rotate180 => (SIZE::WIDTH - x - 1, SIZE::HEIGHT - y - 1),
+            DisplayRotation::Rotate270 => (y, SIZE::HEIGHT - x - 1),
+        };
+
+        match self.mirroring {
+            Mirroring::Horizontal => {
+                x = SIZE::WIDTH - x - 1;
+            }
+            Mirroring::Vertical => {
+                y = SIZE::HEIGHT - y - 1;
+            }
+            Mirroring::Origin => {
+                x = SIZE::WIDTH - x - 1;
+                y = SIZE::HEIGHT - y - 1;
+            }
+            _ => (),
+        }
+
+        let width_in_bits = SIZE::WIDTH * C::BITS_PER_PIXEL;
+        let width_in_byte = width_in_bits / 8 + (width_in_bits % 8 != 0) as usize;
+
+        for i in 0..C::BITS_PER_PIXEL {
+            let bit_offset = x * C::BITS_PER_PIXEL + i;
+            let byte_offset = width_in_byte * y + bit_offset / 8;
+            let bit_offset = 7 - bit_offset % 8;
+
+            if pixel.luma() & (1 << i) != 0 {
+                self.buf.as_mut_slice()[byte_offset] |= 1 << bit_offset;
+            } else {
+                self.buf.as_mut_slice()[byte_offset] &= !(1 << bit_offset);
+            }
+        }
+    }
+
+    pub fn bounding_box(&self) -> Rectangle {
+        match self.rotation {
+            DisplayRotation::Rotate0 | DisplayRotation::Rotate180 => Rectangle::new(
+                Point::zero(),
+                Size::new(SIZE::WIDTH as _, SIZE::HEIGHT as _),
+            ),
+            _ => Rectangle::new(
+                Point::zero(),
+                Size::new(SIZE::HEIGHT as _, SIZE::WIDTH as _),
+            ),
+        }
+    }
 }
