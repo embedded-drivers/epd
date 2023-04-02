@@ -1,21 +1,19 @@
 [package]
 name = "epd"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Andelf <andelf@gmail.com>"]
 edition = "2018"
-description = "SPI driver for EPD(E-Paper Displays), WIP."
+description = "Drivers for EPD(E-Paper Displays), WIP."
 documentation = "https://docs.rs/epd"
 repository = "https://github.com/andelf/epd"
 keywords = ["no-std", "epd", "epaper", "embedded", "embedded-hal-driver"]
 license = "MIT OR Apache-2.0"
 categories = ["embedded", "hardware-support", "no-std"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 embedded-hal = { version = "0.2", features = ["unproven"] }
 # buggy and outdated
-# embedded-graphics = "0.7"
-embedded-graphics = { path = "../embedded-graphics" }
+embedded-graphics = "0.7"
+# embedded-graphics = { path = "../embedded-graphics" }
 
 defmt = "0.3"
