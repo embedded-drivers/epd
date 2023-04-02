@@ -238,7 +238,16 @@ impl GrayScaleDriver<Gray4> for SSD1608 {
             0x01, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00
         ];
+
+
+        // write VCOM reg
+        di.send_command_data(0x2c, &[0xb8])?; // Good to distinguish between gray levels
+
+        // di.send_command_data(0x03, &[0b0000_0000])?; // VGH/VGL
         di.send_command_data(0x04, &[0b0000])?; // lower VSH/VSL
+
+        di.send_command_data(0x3b, &[0b0000])?; // lowest gate line width
+
         di.send_command_data(0x32, &LUT_INCREMENTAL_DIV_2)?;
         Ok(())
     }
