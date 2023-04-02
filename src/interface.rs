@@ -26,6 +26,11 @@ pub trait DisplayInterface {
     /// Send data for a command.
     fn send_data(&mut self, data: &[u8]) -> Result<(), DisplayError>;
 
+    /// Send data via iter
+    fn send_data_from_iter<'a, I>(&mut self, iter: I) -> Result<(), DisplayError>
+    where
+        I: IntoIterator<Item = &'a u8>;
+
     /// Wait for the controller to indicate it is not busy.
     fn busy_wait(&self);
 
@@ -117,6 +122,30 @@ where
         ret
     }
 
+    fn send_data_from_iter<'a, I>(&mut self, iter: I) -> Result<(), DisplayError>
+    where
+        I: IntoIterator<Item = &'a u8>,
+    {
+        self.cs.set_low().map_err(|_| DisplayError::CSError)?;
+        self.dc.set_high().map_err(|_| DisplayError::DCError)?;
+
+        for &d in iter {
+            let ret = self
+                .spi
+                .write(&[d])
+                .map_err(|_| DisplayError::BusWriteError);
+            if ret.is_err() {
+                self.cs.set_high().ok();
+                return ret;
+            }
+        }
+
+        // Deassert chip select pin
+        self.cs.set_high().ok();
+
+        Ok(())
+    }
+
     /// Wait for the controller to indicate it is not busy.
     fn busy_wait(&self) {
         // LOW: idle, HIGH: busy
@@ -198,6 +227,21 @@ where
             .map_err(|_| DisplayError::BusWriteError);
 
         ret
+    }
+
+    fn send_data_from_iter<'a, I>(&mut self, iter: I) -> Result<(), DisplayError>
+    where
+        I: IntoIterator<Item = &'a u8>,
+    {
+        self.dc.set_high().map_err(|_| DisplayError::DCError)?;
+
+        for &d in iter {
+            self.spi
+                .write(&[d])
+                .map_err(|_| DisplayError::BusWriteError)?;
+        }
+
+        Ok(())
     }
 
     /// Wait for the controller to indicate it is not busy.

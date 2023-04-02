@@ -10,7 +10,7 @@ pub mod interface;
 use core::marker::PhantomData;
 
 use display::{DisplaySize, FrameBuffer};
-use drivers::Driver;
+use drivers::{Driver, MultiColorDriver};
 use embedded_graphics::{
     pixelcolor::BinaryColor,
     prelude::{Dimensions, DrawTarget, PixelColor},
@@ -31,11 +31,11 @@ where
     _phantom: PhantomData<(S, D)>,
 }
 
-impl<I: DisplayInterface, S: DisplaySize, D: Driver> EPD<I, S, D>
+impl<DI: DisplayInterface, S: DisplaySize, D: Driver> EPD<DI, S, D>
 where
     [(); S::N]:,
 {
-    pub fn new(interface: I) -> Self {
+    pub fn new(interface: DI) -> Self {
         Self {
             interface,
             framebuf: FrameBuffer::new_inverted(),
@@ -53,8 +53,7 @@ where
     }
 
     pub fn display_frame(&mut self) -> Result<(), D::Error> {
-        D::update_frame(&mut self.interface, 0, self.framebuf.as_bytes())?;
-
+        D::update_frame(&mut self.interface, self.framebuf.as_bytes())?;
         D::turn_on_display(&mut self.interface)
     }
 
@@ -109,11 +108,11 @@ where
     _phantom: PhantomData<(S, D)>,
 }
 
-impl<I: DisplayInterface, S: DisplaySize, D: Driver> TriColorEPD<I, S, D>
+impl<DI: DisplayInterface, S: DisplaySize, D: MultiColorDriver> TriColorEPD<DI, S, D>
 where
     [(); S::N]:,
 {
-    pub fn new(interface: I) -> Self {
+    pub fn new(interface: DI) -> Self {
         Self {
             interface,
             framebuf0: FrameBuffer::new_inverted(),
@@ -134,8 +133,8 @@ where
     }
 
     pub fn display_frame(&mut self) -> Result<(), D::Error> {
-        D::update_frame(&mut self.interface, 0, self.framebuf0.as_bytes())?;
-        D::update_frame(&mut self.interface, 1, self.framebuf1.as_bytes())?;
+        D::update_channel_frame(&mut self.interface, 0, self.framebuf0.as_bytes())?;
+        D::update_channel_frame(&mut self.interface, 1, self.framebuf1.as_bytes())?;
         D::turn_on_display(&mut self.interface)
     }
 

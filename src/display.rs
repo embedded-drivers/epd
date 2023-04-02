@@ -167,7 +167,7 @@ where
         };
 
         if x > width || y > height {
-            defmt::error!("overflow set {},{}  {}", x, y, pixel);
+            defmt::warn!("overflow set {},{}  {}", x, y, pixel);
 
             return; // TODO: signal this type of error
         }

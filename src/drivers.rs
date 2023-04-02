@@ -1,6 +1,10 @@
 use crate::interface::{self, DisplayInterface};
+use embedded_graphics::prelude::GrayColor;
 use embedded_hal::blocking::delay::DelayUs;
 
+pub use self::ssd1608::SSD1608;
+
+mod ssd1608;
 // TOOD: add profile support
 pub trait Driver {
     type Error;
@@ -14,17 +18,9 @@ pub trait Driver {
     // also set ram pos
     fn set_shape<DI: DisplayInterface>(di: &mut DI, x: u16, y: u16) -> Result<(), Self::Error>;
 
-    // fn set_ram_pos<DI: DisplayInterface>(&mut self, di: &mut DI, x: u16, y: u16);
-
-    fn update_frame<DI: DisplayInterface>(
-        di: &mut DI,
-        channel: usize,
-        buffer: &[u8],
-    ) -> Result<(), Self::Error>;
-
-    fn load_lut<DI: DisplayInterface>(&mut self, _di: &mut DI) -> Result<(), Self::Error> {
-        Ok(())
-    }
+    fn update_frame<'a, DI: DisplayInterface, I>(di: &mut DI, buffer: I) -> Result<(), Self::Error>
+    where
+        I: IntoIterator<Item = &'a u8>;
 
     fn turn_on_display<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error>;
 
@@ -34,6 +30,21 @@ pub trait Driver {
     ) -> Result<(), Self::Error> {
         Ok(())
     }
+}
+
+pub trait MultiColorDriver: Driver {
+    fn update_channel_frame<'a, DI: DisplayInterface, I>(
+        di: &mut DI,
+        channel: u8,
+        buffer: I,
+    ) -> Result<(), Self::Error>
+    where
+        I: IntoIterator<Item = &'a u8>;
+}
+
+pub trait GrayScaleDriver<Color: GrayColor>: Driver {
+    const LUT_FULL_UPDATE: &'static [u8];
+    const LUT_FRAME_UPDATE: &'static [u8];
 }
 
 /// Red/Black/White. 400 source outputs, 300 gate outputs
@@ -106,21 +117,15 @@ impl Driver for SSD1619A {
         Ok(())
     }
 
-    fn update_frame<DI: DisplayInterface>(
-        di: &mut DI,
-        channel: usize,
-        buffer: &[u8],
-    ) -> Result<(), Self::Error> {
+    fn update_frame<'a, DI: DisplayInterface, I>(di: &mut DI, buffer: I) -> Result<(), Self::Error>
+    where
+        I: IntoIterator<Item = &'a u8>,
+    {
         di.send_command_data(0x4e, &[0])?; // x start
         di.send_command_data(0x4f, &[0, 0])?; // y start
 
-        if channel == 0 {
-            di.send_command_data(0x24, buffer)?;
-        } else if channel == 1 {
-            di.send_command_data(0x26, buffer)?;
-        } else {
-            // error
-        }
+        di.send_command(0x24)?;
+        di.send_data_from_iter(buffer)?;
 
         Ok(())
     }
@@ -133,82 +138,28 @@ impl Driver for SSD1619A {
     }
 }
 
-pub struct SSD1608;
-
-impl Driver for SSD1608 {
-    type Error = interface::DisplayError;
-
-    fn wake_up<DI: DisplayInterface, DELAY: DelayUs<u32>>(
+impl MultiColorDriver for SSD1619A {
+    fn update_channel_frame<'a, DI: DisplayInterface, I>(
         di: &mut DI,
-        delay: &mut DELAY,
-    ) -> Result<(), Self::Error> {
-        const EPD_WIDTH: u32 = 400;
-        const EPD_HEIGHT: u32 = 300;
+        channel: u8,
+        buffer: I,
+    ) -> Result<(), Self::Error>
+    where
+        I: IntoIterator<Item = &'a u8>,
+    {
+        di.send_command_data(0x4e, &[0])?; // x start
+        di.send_command_data(0x4f, &[0, 0])?; // y start
 
-        // TODO: reset
-        // Driver Output control
-        di.send_command_data(
-            0x01,
-            &[(EPD_HEIGHT - 1) as u8, ((EPD_HEIGHT - 1) >> 8) as u8, 0],
-        )
-        .unwrap();
-
-        // Booster Enable with Phase 1, Phase 2 and Phase 3 for soft start current setting.
-        // di.send_command_data(0x0c, &[0xd7, 0xd6, 0x9d]).unwrap();
-
-        // write VCOM reg
-        di.send_command_data(0x2c, &[0x7c]).unwrap(); //a8
-
-        // Set dummy line period
-        di.send_command_data(0x3a, &[0x1a]).unwrap();
-        // Set Gate line width
-        di.send_command_data(0x3b, &[0x08]).unwrap();
-
-        // Border Waveform Control
-        // 00 VSS =>
-        // 01 VSH => very black
-        // 10 VSL => gray?
-        // 11 HiZ => no change
-        di.send_command_data(0x3c, &[0b1_1_10_00_00]).unwrap(); // border waveform control
-
-        // Data Entry mode,
-        // Y increment, X increment
-        // address counter is updated in the X direction. [POR]
-        di.send_command_data(0x11, &[0x03]).unwrap();
+        if channel == 0 {
+            di.send_command(0x24)?;
+            di.send_data_from_iter(buffer)?;
+        } else if channel == 1 {
+            di.send_command(0x26)?;
+            di.send_data_from_iter(buffer)?;
+        } else {
+            // error
+        }
 
         Ok(())
-    }
-
-    fn set_shape<DI: DisplayInterface>(di: &mut DI, x: u16, y: u16) -> Result<(), Self::Error> {
-        const EPD_WIDTH: u32 = 400;
-        const EPD_HEIGHT: u32 = 300;
-
-        // set ram x start/end
-        di.send_command_data(0x44, &[0, (EPD_WIDTH >> 3) as u8])
-            .unwrap();
-        // set ram y start/end
-        di.send_command_data(0x45, &[0, 0, EPD_HEIGHT as u8, (EPD_HEIGHT >> 8) as u8])
-            .unwrap();
-        Ok(())
-    }
-
-    fn update_frame<DI: DisplayInterface>(
-        di: &mut DI,
-        channel: usize,
-
-        buffer: &[u8],
-    ) -> Result<(), Self::Error> {
-        let x = 0;
-        //di.cmd_with_data(0x4E, &[(x >> 3) as u8]);
-        //di.cmd_with_data(0x4f, &[y as u8, (y >> 8) as u8]);
-
-        // set cursor
-        di.send_command(0x24); // Write RAM
-        di.send_data(buffer);
-        Ok(())
-    }
-
-    fn turn_on_display<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
-        todo!()
     }
 }
