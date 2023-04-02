@@ -7,13 +7,14 @@ pub mod display;
 // pub mod drivers;
 pub mod interface;
 
-use core::marker::PhantomData;
+use core::{marker::PhantomData, mem};
 
-use display::{DisplaySize, FrameBuffer};
-use drivers::{Driver, MultiColorDriver};
+use display::{DisplayRotation, DisplaySize, FrameBuffer, GrayColorInBits};
+use drivers::{Driver, GrayScaleDriver, MultiColorDriver};
 use embedded_graphics::{
-    pixelcolor::BinaryColor,
-    prelude::{Dimensions, DrawTarget, PixelColor},
+    image::ImageRaw,
+    pixelcolor::{BinaryColor, Gray2},
+    prelude::{Dimensions, DrawTarget, GrayColor, PixelColor},
     primitives::Rectangle,
     Pixel,
 };
@@ -204,5 +205,127 @@ where
             }
         }
         Ok(())
+    }
+}
+
+pub struct GrayScaleEPD<'a, C, I: DisplayInterface, S: DisplaySize, D: GrayScaleDriver<C>>
+where
+    C: GrayColor + GrayColorInBits + PixelColor + From<<C as PixelColor>::Raw>,
+    [(); S::N]:,
+    [(); C::BITS_PER_PIXEL]:,
+{
+    pub interface: I,
+    pub framebufs: [FrameBuffer<S>; C::BITS_PER_PIXEL],
+    _phantom: PhantomData<(S, D)>,
+}
+
+impl<'a, C, I: DisplayInterface, S: DisplaySize, D: GrayScaleDriver<C>> GrayScaleEPD<'a, C, I, S, D>
+where
+    C: GrayColor + GrayColorInBits + PixelColor + From<<C as PixelColor>::Raw>,
+    [(); S::N]:,
+    [(); C::BITS_PER_PIXEL]:,
+{
+    pub fn new(interface: I) -> Self {
+        let mut fbs: [FrameBuffer<S>; C::BITS_PER_PIXEL] = unsafe { mem::zeroed() };
+        for fb in fbs.iter_mut() {
+            fb.set_inverted(true);
+        }
+        Self {
+            interface,
+            // TODO: refactor using compressed framebuffers
+            framebufs: fbs,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn init<DELAY>(&mut self, delay: &mut DELAY) -> Result<(), D::Error>
+    where
+        DELAY: embedded_hal::blocking::delay::DelayUs<u32>,
+    {
+        D::wake_up(&mut self.interface, delay)?;
+        D::set_shape(&mut self.interface, S::WIDTH as _, S::HEIGHT as _)?;
+
+        Ok(())
+    }
+
+    pub fn set_rotation(&mut self, rotation: i32) {
+        for fb in self.framebufs.iter_mut() {
+            fb.set_rotation(rotation);
+        }
+    }
+
+    pub fn display_frame(&mut self) -> Result<(), D::Error> {
+        D::setup_gray_scale(&mut self.interface)?;
+        for fb in self.framebufs.iter() {
+            D::update_frame(&mut self.interface, fb.as_bytes())?;
+            D::turn_on_display(&mut self.interface)?;
+
+            defmt::info!("show frame !");
+        }
+        Ok(())
+    }
+
+    pub fn sleep<DELAY>(&mut self, delay: &mut DELAY) -> Result<(), D::Error>
+    where
+        DELAY: embedded_hal::blocking::delay::DelayUs<u32>,
+    {
+        D::sleep(&mut self.interface, delay)
+    }
+
+    pub fn clear_display(&mut self, color: BinaryColor) -> Result<(), D::Error> {
+        D::restore_normal_mode(&mut self.interface)?;
+        for fb in self.framebufs.iter_mut() {
+            fb.fill(color);
+        }
+        D::update_frame(&mut self.interface, self.framebufs[0].as_bytes())?;
+        D::turn_on_display(&mut self.interface)?;
+        Ok(())
+    }
+}
+
+impl<'a, C, DI: DisplayInterface, S: DisplaySize, D: GrayScaleDriver<C>> DrawTarget
+    for GrayScaleEPD<'a, C, DI, S, D>
+where
+    [(); S::N]:,
+    [(); C::BITS_PER_PIXEL]:,
+
+    C: GrayColor + GrayColorInBits + PixelColor + From<<C as PixelColor>::Raw>,
+{
+    type Color = C;
+    type Error = core::convert::Infallible;
+
+    fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
+    where
+        I: IntoIterator<Item = Pixel<Self::Color>>,
+    {
+        for Pixel(point, color) in pixels.into_iter() {
+            let mut l = color.luma();
+            for i in 0..C::BITS_PER_PIXEL {
+                let bit = l & 0x01;
+                l >>= 1;
+                self.framebufs[i].draw_iter([Pixel(
+                    point,
+                    if bit == 0 {
+                        BinaryColor::On
+                    } else {
+                        BinaryColor::Off
+                    },
+                )])?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<'a, C, DI: DisplayInterface, S: DisplaySize, D: GrayScaleDriver<C>> Dimensions
+    for GrayScaleEPD<'a, C, DI, S, D>
+where
+    [(); S::N]:,
+    [(); C::BITS_PER_PIXEL]:,
+
+    C: GrayColor + GrayColorInBits + PixelColor + From<<C as PixelColor>::Raw>,
+{
+    fn bounding_box(&self) -> Rectangle {
+        self.framebufs[0].bounding_box()
     }
 }

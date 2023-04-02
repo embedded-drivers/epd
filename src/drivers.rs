@@ -5,6 +5,7 @@ use embedded_hal::blocking::delay::DelayUs;
 pub use self::ssd1608::SSD1608;
 
 mod ssd1608;
+
 // TOOD: add profile support
 pub trait Driver {
     type Error;
@@ -43,8 +44,11 @@ pub trait MultiColorDriver: Driver {
 }
 
 pub trait GrayScaleDriver<Color: GrayColor>: Driver {
-    const LUT_FULL_UPDATE: &'static [u8];
-    const LUT_FRAME_UPDATE: &'static [u8];
+    // const LUT_FULL_UPDATE: &'static [u8];
+    // const LUT_FRAME_UPDATE: &'static [u8];
+    fn setup_gray_scale<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error>;
+
+    fn restore_normal_mode<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error>;
 }
 
 /// Red/Black/White. 400 source outputs, 300 gate outputs

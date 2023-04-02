@@ -9,7 +9,10 @@ use core::convert::TryInto;
 use core::mem;
 
 use embedded_graphics::{
-    draw_target::DrawTarget, pixelcolor::BinaryColor, prelude::*, primitives::Rectangle,
+    draw_target::DrawTarget,
+    pixelcolor::{BinaryColor, Gray2},
+    prelude::*,
+    primitives::Rectangle,
 };
 
 /// Rotation of the display.
@@ -264,49 +267,23 @@ where
         Ok(())
     }
 }
-/*
-where
-    DI: DisplayInterface,
-    SIZE: DisplaySize,
-{
-    type Error = core::convert::Infallible;
 
-    /// Draw a `Pixel` that has a color defined as `BinaryColor`.
-    // On => black, 0x00
-    // Off => white, 0xff
-    fn draw_pixel(&mut self, pixel: Pixel<BinaryColor>) -> Result<(), Self::Error> {
-        let Pixel(coord, color) = pixel;
-
-        match TryInto::<(u32, u32)>::try_into(coord) {
-            Ok((x, y)) => self.framebuffer.set_pixel(x as _, y as _, color.is_on()),
-            _ => (),
-        }
-
-        Ok(())
-    }
-
-    // NOTE: size() should change according to rotation.
-    // Some embedded_graphics drivers do not follow this specification.
-    fn size(&self) -> Size {
-        match self.framebuffer.rotation {
-            DisplayRotation::Rotate0 | DisplayRotation::Rotate180 => {
-                Size::new(SIZE::WIDTH as _, SIZE::HEIGHT as _)
-            }
-            DisplayRotation::Rotate90 | DisplayRotation::Rotate270 => {
-                Size::new(SIZE::HEIGHT as _, SIZE::WIDTH as _)
-            }
-        }
-    }
-
-    // accelerated implementation
-    fn clear(&mut self, color: BinaryColor) -> Result<(), Self::Error> {
-        let fill = if color.is_on() { 0x00 } else { 0xff };
-        self.framebuffer
-            .buf
-            .as_mut_slice()
-            .iter_mut()
-            .for_each(|b| *b = fill);
-        Ok(())
-    }
+pub trait GrayColorInBits {
+    const BITS_PER_PIXEL: usize;
 }
-*/
+
+impl GrayColorInBits for Gray2 {
+    const BITS_PER_PIXEL: usize = 2;
+}
+
+#[derive(Clone)]
+pub struct GrayFrameBuffer<SIZE: DisplaySize, C: GrayColor + GrayColorInBits>
+where
+    [(); SIZE::N]:,
+    [(); SIZE::N * C::BITS_PER_PIXEL]:
+{
+    buf: [u8; SIZE::N * C::BITS_PER_PIXEL],
+    rotation: DisplayRotation,
+    mirroring: Mirroring,
+    inverted: bool,
+}
