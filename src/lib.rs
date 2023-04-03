@@ -3,26 +3,26 @@
 #![feature(generic_const_exprs)]
 #![feature(generic_arg_infer)]
 
+pub mod color;
 pub mod display;
-// pub mod drivers;
+pub mod drivers;
 pub mod interface;
 
-use core::{marker::PhantomData, mem};
+use core::marker::PhantomData;
 
+use color::GrayColorInBits;
+pub use color::TriColor;
 use defmt::println;
-use display::{DisplayRotation, DisplaySize, FrameBuffer, GrayColorInBits, GrayFrameBuffer};
+use display::{DisplaySize, FrameBuffer, GrayFrameBuffer};
 use drivers::{Driver, GrayScaleDriver, MultiColorDriver};
 use embedded_graphics::{
-    image::ImageRaw,
-    pixelcolor::{BinaryColor, Gray2},
+    pixelcolor::BinaryColor,
     prelude::{Dimensions, DrawTarget, GrayColor, PixelColor},
     primitives::Rectangle,
     Pixel,
 };
 use interface::DisplayInterface;
 pub use interface::EPDInterface;
-
-pub mod drivers;
 
 pub struct EPD<I: DisplayInterface, S: DisplaySize, D: Driver>
 where
@@ -166,18 +166,6 @@ where
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub enum TriColor {
-    White,
-    Black,
-    Red, // or yellow?
-}
-/// The `Raw` can be is set to `()` because `EpdColor` doesn't need to be
-/// converted to raw data for the display and isn't stored in images.
-impl PixelColor for TriColor {
-    type Raw = ();
-}
-
 impl<I: DisplayInterface, SIZE: DisplaySize, D: Driver> DrawTarget for TriColorEPD<I, SIZE, D>
 where
     [(); SIZE::N]:,
@@ -257,7 +245,6 @@ where
         let width_in_byte = SIZE::WIDTH / 8 + (SIZE::WIDTH % 8 != 0) as usize;
 
         for i in (0..C::MAX_VALUE + 1).rev() {
-
             defmt::debug!("display layer {}", i);
             let mut tmp = [0xffu8; SIZE::N];
             // extract gray channel and fill in the tmp buffer
@@ -269,10 +256,10 @@ where
                     let pixel = self.framebuf.get_pixel_in_raw_pos(x, y);
 
                     let val = pixel.luma(); // 0, 1, 2, 3
-                    // defmt::info!("x {} y {}  val {}", x, y, val);
+                                            // defmt::info!("x {} y {}  val {}", x, y, val);
 
                     if val == 7 {
-                       // defmt::info!("layer 7");
+                        // defmt::info!("layer 7");
                     }
                     if val < i {
                         tmp[byte_offset] &= !(1 << bit_offset);

@@ -15,6 +15,8 @@ use embedded_graphics::{
     primitives::Rectangle,
 };
 
+use crate::color::GrayColorInBits;
+
 /// Rotation of the display.
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]
@@ -47,6 +49,7 @@ pub trait DisplaySize {
     const N: usize;
 }
 
+/// 2in9
 #[derive(Clone, Copy)]
 pub struct DisplaySize128x296;
 
@@ -257,28 +260,6 @@ where
         }
 
         Ok(())
-    }
-}
-
-pub trait GrayColorInBits {
-    const BITS_PER_PIXEL: usize;
-    const MAX_VALUE: u8 = (1 << Self::BITS_PER_PIXEL) - 1;
-
-    fn from_u8(value: u8) -> Self;
-}
-
-impl GrayColorInBits for Gray2 {
-    const BITS_PER_PIXEL: usize = 2;
-
-    fn from_u8(value: u8) -> Self {
-        Gray2::new(value)
-    }
-}
-impl GrayColorInBits for Gray4 {
-    const BITS_PER_PIXEL: usize = 4;
-
-    fn from_u8(value: u8) -> Self {
-        Gray4::new(value)
     }
 }
 

@@ -1,7 +1,10 @@
 use embedded_graphics::pixelcolor::{Gray2, Gray4};
 use embedded_hal::blocking::delay::DelayUs;
 
-use crate::interface::{self, DisplayInterface};
+use crate::{
+    color::Gray3,
+    interface::{self, DisplayInterface},
+};
 
 use super::{Driver, GrayScaleDriver};
 
@@ -188,7 +191,7 @@ impl GrayScaleDriver<Gray2> for SSD1608 {
         const LUT_INCREMENTAL_DIV_2: [u8; 30] = [
             // VS
             // incremental update
-            0b00_01_00_00,
+            0b00_01_00_01,
                   0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00,
@@ -199,6 +202,48 @@ impl GrayScaleDriver<Gray2> for SSD1608 {
 
             0x00, 0x00
         ];
+
+        di.send_command_data(0x32, &LUT_INCREMENTAL_DIV_2)?;
+        Ok(())
+    }
+
+    fn restore_normal_mode<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
+        #[rustfmt::skip]
+        const LUT_FULL_UPDATE: [u8; 30] = [
+            0x50, 0xAA, 0x55, 0xAA, 0x11,
+            0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00,
+
+            0xFF, 0xFF, 0x1F, 0x00,
+            0x00, 0x00, 0x00, 0x00,
+
+            0x00, 0x00,
+        ];
+        di.send_command_data(0x32, &LUT_FULL_UPDATE)?;
+        Ok(())
+    }
+}
+
+impl GrayScaleDriver<Gray3> for SSD1608 {
+    fn setup_gray_scale<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
+        #[rustfmt::skip]
+        const LUT_INCREMENTAL_DIV_2: [u8; 30] = [
+            // VS
+            // incremental update
+            0b00_01_00_01,
+                  0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00,
+            // TP
+            0x01, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00,
+
+            0x00, 0x00
+        ];
+
+        di.send_command_data(0x04, &[0b0000])?; // lower VSH/VSL
 
         di.send_command_data(0x32, &LUT_INCREMENTAL_DIV_2)?;
         Ok(())
@@ -238,7 +283,6 @@ impl GrayScaleDriver<Gray4> for SSD1608 {
             0x01, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00
         ];
-
 
         // write VCOM reg
         di.send_command_data(0x2c, &[0xb8])?; // Good to distinguish between gray levels
