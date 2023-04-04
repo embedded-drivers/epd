@@ -24,6 +24,8 @@ use embedded_graphics::{
 use interface::DisplayInterface;
 pub use interface::EPDInterface;
 
+use crate::drivers::WaveformDriver;
+
 pub struct EPD<I: DisplayInterface, S: DisplaySize, D: Driver>
 where
     [(); S::N]:,
@@ -40,7 +42,11 @@ where
     pub fn new(interface: DI) -> Self {
         Self {
             interface,
-            framebuf: FrameBuffer::new_inverted(),
+            framebuf: if D::BLACK_BIT == false {
+                FrameBuffer::new_inverted()
+            } else {
+                FrameBuffer::new()
+            },
             _phantom: PhantomData,
         }
     }
@@ -121,7 +127,11 @@ where
     pub fn new(interface: DI) -> Self {
         Self {
             interface,
-            framebuf0: FrameBuffer::new_inverted(),
+            framebuf0: if D::BLACK_BIT == false {
+                FrameBuffer::new_inverted()
+            } else {
+                FrameBuffer::new()
+            },
             framebuf1: FrameBuffer::new(),
             _phantom: PhantomData,
         }
@@ -248,7 +258,7 @@ where
     }
 
     pub fn display_frame(&mut self) -> Result<(), D::Error> {
-        D::setup_gray_scale(&mut self.interface)?;
+        D::setup_gray_scale_waveform(&mut self.interface)?;
 
         let width_in_byte = SIZE::WIDTH / 8 + (SIZE::WIDTH % 8 != 0) as usize;
 
@@ -277,7 +287,7 @@ where
             }
             println!("frame {}", tmp.iter().filter(|&&x| x != 0xff).count());
             D::update_frame(&mut self.interface, &tmp)?;
-            D::turn_on_display(&mut self.interface)?;
+            <D as WaveformDriver>::turn_on_display(&mut self.interface)?;
         }
 
         Ok(())
@@ -296,7 +306,7 @@ where
         self.framebuf.fill(color);
 
         D::update_frame(&mut self.interface, self.framebuf.as_bytes())?;
-        D::turn_on_display(&mut self.interface)?;
+        <D as Driver>::turn_on_display(&mut self.interface)?;
         Ok(())
     }
 }

@@ -82,6 +82,16 @@ impl DisplaySize for DisplaySize212x104 {
     const N: usize = (Self::WIDTH / 8 + 1) * Self::HEIGHT;
 }
 
+#[derive(Clone, Copy)]
+pub struct DisplaySize104x201;
+
+impl DisplaySize for DisplaySize104x201 {
+    const WIDTH: usize = 212;
+    const HEIGHT: usize = 104;
+
+    const N: usize = (Self::WIDTH / 8 + 1) * Self::HEIGHT;
+}
+
 /// For 2in13 EPD with Black and White, WIDTH=122, HEIGHT=250.
 #[derive(Clone, Copy)]
 pub struct DisplaySize250x122;
@@ -134,6 +144,7 @@ where
     pub fn new_inverted() -> Self {
         let mut this = Self::new();
         this.buf.fill(0xff);
+        this.inverted = true;
         this
     }
 
@@ -208,9 +219,9 @@ where
         // For black white color
         let byte_offset = y * width_in_byte + x / 8;
         if pixel ^ self.inverted {
-            self.buf.as_mut_slice()[byte_offset] |= 0x80 >> (x % 8);
-        } else {
             self.buf.as_mut_slice()[byte_offset] &= !(0x80 >> (x % 8));
+        } else {
+            self.buf.as_mut_slice()[byte_offset] |= 0x80 >> (x % 8);
         }
     }
 

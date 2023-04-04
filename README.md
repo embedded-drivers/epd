@@ -32,3 +32,11 @@ NOTE: This is a personal POC project.
 
     display.display_frame();
 ```
+
+## Presets
+
+```rust
+// 2in9, 296x128
+// FPC: FPC-7519
+// SSD1680
+```

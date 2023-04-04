@@ -27,9 +27,11 @@ pub trait DisplayInterface {
     fn send_data(&mut self, data: &[u8]) -> Result<(), DisplayError>;
 
     /// Send data via iter
-    fn send_data_from_iter<'a, I>(&mut self, iter: I) -> Result<(), DisplayError>
+    fn send_data_from_iter<'a, I>(&mut self, iter: I) -> Result<usize, DisplayError>
     where
         I: IntoIterator<Item = &'a u8>;
+
+    fn is_busy_on(&self) -> bool;
 
     /// Wait for the controller to indicate it is not busy.
     fn busy_wait(&self);
@@ -57,11 +59,11 @@ where
     RST: OutputPin,
     BUSY: InputPin,
 {
-    pub fn new(spi: SPI, dc: DC, cs: CS, rst: RST, busy: BUSY) -> Self {
+    pub fn new(spi: SPI, cs: CS, dc: DC, rst: RST, busy: BUSY) -> Self {
         EPDInterface {
             spi,
-            dc,
             cs,
+            dc,
             rst,
             busy,
         }
@@ -122,28 +124,30 @@ where
         ret
     }
 
-    fn send_data_from_iter<'a, I>(&mut self, iter: I) -> Result<(), DisplayError>
+    fn send_data_from_iter<'a, I>(&mut self, iter: I) -> Result<usize, DisplayError>
     where
         I: IntoIterator<Item = &'a u8>,
     {
         self.cs.set_low().map_err(|_| DisplayError::CSError)?;
         self.dc.set_high().map_err(|_| DisplayError::DCError)?;
 
+        let mut n = 0;
         for &d in iter {
+            n += 1;
             let ret = self
                 .spi
                 .write(&[d])
                 .map_err(|_| DisplayError::BusWriteError);
             if ret.is_err() {
                 self.cs.set_high().ok();
-                return ret;
+                ret?; // return the error
             }
         }
 
         // Deassert chip select pin
         self.cs.set_high().ok();
 
-        Ok(())
+        Ok(n)
     }
 
     /// Wait for the controller to indicate it is not busy.
@@ -165,6 +169,10 @@ where
         //TODO: the upstream libraries always sleep for 200ms here
         // 10ms works fine with just for the 7in5_v2 but this needs to be validated for other devices
         delay.delay_us(200_000);
+    }
+
+    fn is_busy_on(&self) -> bool {
+        self.busy.is_high().unwrap_or(false)
     }
 }
 
@@ -229,25 +237,31 @@ where
         ret
     }
 
-    fn send_data_from_iter<'a, I>(&mut self, iter: I) -> Result<(), DisplayError>
+    fn send_data_from_iter<'a, I>(&mut self, iter: I) -> Result<usize, DisplayError>
     where
         I: IntoIterator<Item = &'a u8>,
     {
         self.dc.set_high().map_err(|_| DisplayError::DCError)?;
 
+        let mut n = 0;
         for &d in iter {
+            n += 1;
             self.spi
                 .write(&[d])
                 .map_err(|_| DisplayError::BusWriteError)?;
         }
 
-        Ok(())
+        Ok(n)
     }
 
     /// Wait for the controller to indicate it is not busy.
     fn busy_wait(&self) {
         // LOW: idle, HIGH: busy
         while self.busy.is_high().unwrap_or(false) {}
+    }
+
+    fn is_busy_on(&self) -> bool {
+        self.busy.is_high().unwrap_or(false)
     }
 
     fn reset<D>(&mut self, delay: &mut D, initial_delay: u32, duration: u32)

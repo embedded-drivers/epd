@@ -6,7 +6,7 @@ use crate::{
     interface::{self, DisplayInterface},
 };
 
-use super::{Driver, GrayScaleDriver};
+use super::{Driver, GrayScaleDriver, WaveformDriver};
 
 /// B/W 240 x 320
 pub struct SSD1608;
@@ -19,7 +19,7 @@ impl Driver for SSD1608 {
         delay: &mut DELAY,
     ) -> Result<(), Self::Error> {
         di.reset(delay, 200_000, 200_000);
-        di.busy_wait();
+        Self::busy_wait(di)?;
 
         defmt::debug!("wake up");
 
@@ -27,7 +27,7 @@ impl Driver for SSD1608 {
         // di.send_command_data(0x10, &[0x00])?;
 
         di.send_command(0x12)?; //swreset
-        di.busy_wait();
+        Self::busy_wait(di)?;
 
         // Booster Enable with Phase 1, Phase 2 and Phase 3 for soft start current setting.
         di.send_command_data(0x0c, &[0xd7, 0xd6, 0x9d])?;
@@ -126,7 +126,7 @@ impl Driver for SSD1608 {
         di.send_command_data(0x22, &[0xc4])?; // Display Update Control 2
         di.send_command(0x20)?;
         di.send_command(0xff)?;
-        di.busy_wait();
+        Self::busy_wait(di)?;
         Ok(())
     }
 
@@ -181,12 +181,21 @@ impl Driver for SSD1608Fast {
     }
 
     fn turn_on_display<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
-        SSD1608::turn_on_display(di)
+        <SSD1608 as Driver>::turn_on_display(di)
+    }
+}
+
+impl WaveformDriver for SSD1608 {
+    fn update_waveform<DI: DisplayInterface>(
+        di: &mut DI,
+        lut: &'static [u8],
+    ) -> Result<(), Self::Error> {
+        di.send_command_data(0x32, lut)
     }
 }
 
 impl GrayScaleDriver<Gray2> for SSD1608 {
-    fn setup_gray_scale<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
+    fn setup_gray_scale_waveform<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
         #[rustfmt::skip]
         const LUT_INCREMENTAL_DIV_2: [u8; 30] = [
             // VS
@@ -203,7 +212,7 @@ impl GrayScaleDriver<Gray2> for SSD1608 {
             0x00, 0x00
         ];
 
-        di.send_command_data(0x32, &LUT_INCREMENTAL_DIV_2)?;
+        Self::update_waveform(di, &LUT_INCREMENTAL_DIV_2)?;
         Ok(())
     }
 
@@ -220,15 +229,15 @@ impl GrayScaleDriver<Gray2> for SSD1608 {
 
             0x00, 0x00,
         ];
-        di.send_command_data(0x32, &LUT_FULL_UPDATE)?;
+        Self::update_waveform(di, &LUT_FULL_UPDATE)?;
         Ok(())
     }
 }
 
 impl GrayScaleDriver<Gray3> for SSD1608 {
-    fn setup_gray_scale<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
+    fn setup_gray_scale_waveform<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
         #[rustfmt::skip]
-        const LUT_INCREMENTAL_DIV_2: [u8; 30] = [
+        const LUT_INCREMENTAL_DIV_16: [u8; 30] = [
             // VS
             // incremental update
             0b00_01_00_01,
@@ -245,7 +254,7 @@ impl GrayScaleDriver<Gray3> for SSD1608 {
 
         di.send_command_data(0x04, &[0b0000])?; // lower VSH/VSL
 
-        di.send_command_data(0x32, &LUT_INCREMENTAL_DIV_2)?;
+        Self::update_waveform(di, &LUT_INCREMENTAL_DIV_16)?;
         Ok(())
     }
 
@@ -262,15 +271,15 @@ impl GrayScaleDriver<Gray3> for SSD1608 {
 
             0x00, 0x00,
         ];
-        di.send_command_data(0x32, &LUT_FULL_UPDATE)?;
+        Self::update_waveform(di, &LUT_FULL_UPDATE)?;
         Ok(())
     }
 }
 
 impl GrayScaleDriver<Gray4> for SSD1608 {
-    fn setup_gray_scale<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
+    fn setup_gray_scale_waveform<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
         #[rustfmt::skip]
-        const LUT_INCREMENTAL_DIV_2: [u8; 30] = [
+        const LUT_INCREMENTAL_DIV_16: [u8; 30] = [
             // VS
             // incremental update
             // 10 clean
@@ -289,10 +298,10 @@ impl GrayScaleDriver<Gray4> for SSD1608 {
 
         // di.send_command_data(0x03, &[0b0000_0000])?; // VGH/VGL
         di.send_command_data(0x04, &[0b0000])?; // lower VSH/VSL
-
         di.send_command_data(0x3b, &[0b0000])?; // lowest gate line width
 
-        di.send_command_data(0x32, &LUT_INCREMENTAL_DIV_2)?;
+        Self::update_waveform(di, &LUT_INCREMENTAL_DIV_16)?;
+
         Ok(())
     }
 
@@ -309,7 +318,7 @@ impl GrayScaleDriver<Gray4> for SSD1608 {
 
             0x00, 0x00,
         ];
-        di.send_command_data(0x32, &LUT_FULL_UPDATE)?;
+        Self::update_waveform(di, &LUT_FULL_UPDATE)?;
         Ok(())
     }
 }
