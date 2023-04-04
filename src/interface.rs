@@ -33,9 +33,6 @@ pub trait DisplayInterface {
 
     fn is_busy_on(&self) -> bool;
 
-    /// Wait for the controller to indicate it is not busy.
-    fn busy_wait(&self);
-
     /// Hard reset
     fn reset<D>(&mut self, delay: &mut D, initial_delay: u32, duration: u32)
     where
@@ -150,12 +147,6 @@ where
         Ok(n)
     }
 
-    /// Wait for the controller to indicate it is not busy.
-    fn busy_wait(&self) {
-        // LOW: idle, HIGH: busy
-        while self.busy.is_high().unwrap_or(false) {}
-    }
-
     fn reset<D>(&mut self, delay: &mut D, initial_delay: u32, duration: u32)
     where
         D: DelayUs<u32>,
@@ -252,12 +243,6 @@ where
         }
 
         Ok(n)
-    }
-
-    /// Wait for the controller to indicate it is not busy.
-    fn busy_wait(&self) {
-        // LOW: idle, HIGH: busy
-        while self.busy.is_high().unwrap_or(false) {}
     }
 
     fn is_busy_on(&self) -> bool {

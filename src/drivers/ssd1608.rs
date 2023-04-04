@@ -216,7 +216,7 @@ impl GrayScaleDriver<Gray2> for SSD1608 {
         Ok(())
     }
 
-    fn restore_normal_mode<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
+    fn restore_normal_waveform<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
         #[rustfmt::skip]
         const LUT_FULL_UPDATE: [u8; 30] = [
             0x50, 0xAA, 0x55, 0xAA, 0x11,
@@ -258,7 +258,7 @@ impl GrayScaleDriver<Gray3> for SSD1608 {
         Ok(())
     }
 
-    fn restore_normal_mode<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
+    fn restore_normal_waveform<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
         #[rustfmt::skip]
         const LUT_FULL_UPDATE: [u8; 30] = [
             0x50, 0xAA, 0x55, 0xAA, 0x11,
@@ -305,7 +305,7 @@ impl GrayScaleDriver<Gray4> for SSD1608 {
         Ok(())
     }
 
-    fn restore_normal_mode<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
+    fn restore_normal_waveform<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
         #[rustfmt::skip]
         const LUT_FULL_UPDATE: [u8; 30] = [
             0x50, 0xAA, 0x55, 0xAA, 0x11,

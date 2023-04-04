@@ -12,6 +12,8 @@ mod ssd1608;
 mod ssd1619a;
 mod ssd1680;
 
+pub type IL3820 = SSD1608;
+
 pub trait Driver {
     type Error;
 
@@ -72,7 +74,10 @@ pub trait WaveformDriver: Driver {
     ) -> Result<(), Self::Error>;
 }
 
-pub trait FastUpdateDriver: WaveformDriver {}
+pub trait FastUpdateDriver: WaveformDriver {
+    fn setup_fast_waveform<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error>;
+    fn restore_normal_waveform<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error>;
+}
 
 pub trait GrayScaleDriver<Color: GrayColor>: WaveformDriver {
     fn init_as_gray_scale<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
@@ -82,7 +87,7 @@ pub trait GrayScaleDriver<Color: GrayColor>: WaveformDriver {
     // const LUT_FRAME_UPDATE: &'static [u8];
     fn setup_gray_scale_waveform<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error>;
 
-    fn restore_normal_mode<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error>;
+    fn restore_normal_waveform<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error>;
 }
 
 /// IL0373?
@@ -108,6 +113,7 @@ impl Driver for PLDS {
         di.reset(delay, 10_000, 10_000);
         Self::busy_wait(di)?;
 
+        // panel setting
         di.send_command_data(0x00, &[0x0e])?; // soft-reset
 
         delay.delay_us(5_000_u32);

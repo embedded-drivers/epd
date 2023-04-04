@@ -4,6 +4,13 @@ EPD = Electronic Paper Display
 
 NOTE: This is a personal POC project.
 
+## Design
+
+- Normal B/W Driver
+- Tri-Color Driver if supported
+- Fast Driver
+- Gray Scale Drivers
+
 ## How to use
 
 ```rust

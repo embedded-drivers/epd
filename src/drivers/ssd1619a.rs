@@ -200,7 +200,7 @@ impl GrayScaleDriver<Gray4> for SSD1619A {
         Ok(())
     }
 
-    fn restore_normal_mode<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
+    fn restore_normal_waveform<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
         #[rustfmt::skip]
         const LUT_FAST_UPDATE: [u8; 70] = [
             0b10_10_01_01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // L0 => B

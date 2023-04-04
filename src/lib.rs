@@ -14,7 +14,7 @@ use color::GrayColorInBits;
 pub use color::TriColor;
 use defmt::println;
 use display::{DisplaySize, FrameBuffer, GrayFrameBuffer};
-use drivers::{Driver, GrayScaleDriver, MultiColorDriver};
+use drivers::{Driver, FastUpdateDriver, GrayScaleDriver, MultiColorDriver};
 use embedded_graphics::{
     pixelcolor::BinaryColor,
     prelude::{Dimensions, DrawTarget, GrayColor, PixelColor},
@@ -96,6 +96,100 @@ where
 }
 
 impl<I: DisplayInterface, S: DisplaySize, D: Driver> DrawTarget for EPD<I, S, D>
+where
+    [(); S::N]:,
+{
+    type Color = embedded_graphics::pixelcolor::BinaryColor;
+    type Error = core::convert::Infallible;
+
+    fn draw_iter<IP>(&mut self, pixels: IP) -> Result<(), Self::Error>
+    where
+        IP: IntoIterator<Item = embedded_graphics::Pixel<Self::Color>>,
+    {
+        self.framebuf.draw_iter(pixels)
+    }
+}
+
+/// EPD display backed by fast update LUT, both fast update and full update are supported.
+pub struct FastUpdateEPD<I: DisplayInterface, S: DisplaySize, D: FastUpdateDriver>
+where
+    [(); S::N]:,
+{
+    pub interface: I,
+    pub framebuf: FrameBuffer<S>,
+    _phantom: PhantomData<(S, D)>,
+}
+
+impl<DI: DisplayInterface, S: DisplaySize, D: FastUpdateDriver> FastUpdateEPD<DI, S, D>
+where
+    [(); S::N]:,
+{
+    pub fn new(interface: DI) -> Self {
+        Self {
+            interface,
+            framebuf: if D::BLACK_BIT == false {
+                FrameBuffer::new_ones()
+            } else {
+                FrameBuffer::new()
+            },
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn init<DELAY>(&mut self, delay: &mut DELAY) -> Result<(), D::Error>
+    where
+        DELAY: embedded_hal::blocking::delay::DelayUs<u32>,
+    {
+        D::wake_up(&mut self.interface, delay)?;
+        D::set_shape(&mut self.interface, S::WIDTH as _, S::HEIGHT as _)?;
+        Ok(())
+    }
+
+    pub fn set_rotation(&mut self, rotation: i32) {
+        self.framebuf.set_rotation(rotation);
+    }
+
+    pub fn display_frame(&mut self) -> Result<(), D::Error> {
+        D::setup_fast_waveform(&mut self.interface)?;
+        D::update_frame(&mut self.interface, self.framebuf.as_bytes())?;
+        <D as WaveformDriver>::turn_on_display(&mut self.interface)?;
+        Ok(())
+    }
+
+    pub fn display_frame_full_update(&mut self) -> Result<(), D::Error> {
+        D::restore_normal_waveform(&mut self.interface)?;
+        D::update_frame(&mut self.interface, self.framebuf.as_bytes())?;
+        <D as WaveformDriver>::turn_on_display(&mut self.interface)?;
+        Ok(())
+    }
+
+    pub fn sleep<DELAY>(&mut self, delay: &mut DELAY) -> Result<(), D::Error>
+    where
+        DELAY: embedded_hal::blocking::delay::DelayUs<u32>,
+    {
+        D::sleep(&mut self.interface, delay)
+    }
+
+    pub fn wake_up<DELAY>(&mut self, delay: &mut DELAY) -> Result<(), D::Error>
+    where
+        DELAY: embedded_hal::blocking::delay::DelayUs<u32>,
+    {
+        D::wake_up(&mut self.interface, delay)?;
+        D::set_shape(&mut self.interface, S::WIDTH as _, S::HEIGHT as _)?;
+        Ok(())
+    }
+}
+
+impl<I: DisplayInterface, S: DisplaySize, D: FastUpdateDriver> Dimensions for FastUpdateEPD<I, S, D>
+where
+    [(); S::N]:,
+{
+    fn bounding_box(&self) -> Rectangle {
+        self.framebuf.bounding_box()
+    }
+}
+
+impl<I: DisplayInterface, S: DisplaySize, D: FastUpdateDriver> DrawTarget for FastUpdateEPD<I, S, D>
 where
     [(); S::N]:,
 {
@@ -299,7 +393,7 @@ where
     }
 
     pub fn clear_display(&mut self, color: BinaryColor) -> Result<(), D::Error> {
-        D::restore_normal_mode(&mut self.interface)?;
+        D::restore_normal_waveform(&mut self.interface)?;
 
         self.framebuf.fill(color);
 
