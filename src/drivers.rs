@@ -6,10 +6,11 @@ use embedded_hal::blocking::delay::DelayUs;
 
 pub use self::ssd1608::*;
 pub use self::ssd1619a::*;
+pub use self::ssd1680::*;
 
 mod ssd1608;
 mod ssd1619a;
-// mod ssd1680;
+mod ssd1680;
 
 pub trait Driver {
     type Error;

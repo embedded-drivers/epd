@@ -43,7 +43,7 @@ where
         Self {
             interface,
             framebuf: if D::BLACK_BIT == false {
-                FrameBuffer::new_inverted()
+                FrameBuffer::new_ones()
             } else {
                 FrameBuffer::new()
             },
@@ -127,11 +127,7 @@ where
     pub fn new(interface: DI) -> Self {
         Self {
             interface,
-            framebuf0: if D::BLACK_BIT == false {
-                FrameBuffer::new_inverted()
-            } else {
-                FrameBuffer::new()
-            },
+            framebuf0: FrameBuffer::new_ones(),
             framebuf1: FrameBuffer::new(),
             _phantom: PhantomData,
         }
@@ -153,6 +149,8 @@ where
     }
 
     pub fn display_frame(&mut self) -> Result<(), D::Error> {
+        defmt::info!("B/W {:?}", &self.framebuf0.as_bytes()[0..10]);
+        defmt::info!("RED {:?}", &self.framebuf1.as_bytes()[0..10]);
         D::update_channel_frame(&mut self.interface, 0, self.framebuf0.as_bytes())?;
         D::update_channel_frame(&mut self.interface, 1, self.framebuf1.as_bytes())?;
         D::turn_on_display(&mut self.interface)

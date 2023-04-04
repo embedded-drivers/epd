@@ -1,7 +1,5 @@
 //! Driver for embedded-graphics.
 //!
-//! IL3895.
-//!
 //! The buffer has to be flushed to update the display after a group of draw calls has been completed.
 //! The flush is not part of embedded-graphics API.
 
@@ -114,7 +112,7 @@ impl DisplaySize for DisplaySize400x300 {
     const N: usize = (Self::WIDTH / 8) * Self::HEIGHT;
 }
 
-// TODO: active ON/OFF pixel
+/// Framebuffer with rotation support
 #[derive(Clone)]
 pub struct FrameBuffer<SIZE: DisplaySize>
 where
@@ -141,10 +139,10 @@ where
         }
     }
 
-    pub fn new_inverted() -> Self {
+    pub fn new_ones() -> Self {
         let mut this = Self::new();
         this.buf.fill(0xff);
-        this.inverted = true;
+        // this.inverted = true;
         this
     }
 
@@ -216,12 +214,12 @@ where
             return; // TODO: signal error
         }
 
-        // For black white color
+        // The logic is for For black white color
         let byte_offset = y * width_in_byte + x / 8;
         if pixel ^ self.inverted {
-            self.buf.as_mut_slice()[byte_offset] &= !(0x80 >> (x % 8));
-        } else {
             self.buf.as_mut_slice()[byte_offset] |= 0x80 >> (x % 8);
+        } else {
+            self.buf.as_mut_slice()[byte_offset] &= !(0x80 >> (x % 8));
         }
     }
 
