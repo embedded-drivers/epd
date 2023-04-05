@@ -7,10 +7,12 @@ use embedded_hal::blocking::delay::DelayUs;
 pub use self::ssd1608::*;
 pub use self::ssd1619a::*;
 pub use self::ssd1680::*;
+pub use self::pd::*;
 
 mod ssd1608;
 mod ssd1619a;
 mod ssd1680;
+mod pd;
 
 pub type IL3820 = SSD1608;
 
@@ -90,98 +92,3 @@ pub trait GrayScaleDriver<Color: GrayColor>: WaveformDriver {
     fn restore_normal_waveform<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error>;
 }
 
-/// IL0373?
-/// Up to 160 source x 296 gate resolution
-/// small, including 420 and 437
-/// Pervasive Displays
-// https://github.com/rei-vilo/PDLS_EXT3_Basic/blob/main/src/Screen_EPD_EXT3.cpp
-pub struct PLDS;
-
-impl Driver for PLDS {
-    type Error = DisplayError;
-
-    fn busy_wait<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
-        // negative logic
-        while !di.is_busy_on() {}
-        Ok(())
-    }
-
-    fn wake_up<DI: DisplayInterface, DELAY: DelayUs<u32>>(
-        di: &mut DI,
-        delay: &mut DELAY,
-    ) -> Result<(), Self::Error> {
-        di.reset(delay, 10_000, 10_000);
-        Self::busy_wait(di)?;
-
-        // panel setting
-        di.send_command_data(0x00, &[0x0e])?; // soft-reset
-
-        delay.delay_us(5_000_u32);
-        di.send_command_data(0xe5, &[0x16]).unwrap(); // Input Temperature 0°C = 0x00, 22°C = 0x16, 25°C = 0x19
-
-        di.send_command_data(0xe0, &[0x02]).unwrap(); // Active Temperature
-
-        Ok(())
-    }
-
-    fn set_shape<DI: DisplayInterface>(di: &mut DI, x: u16, y: u16) -> Result<(), Self::Error> {
-        Ok(())
-    }
-
-    fn update_frame<'a, DI: DisplayInterface, I>(di: &mut DI, buffer: I) -> Result<(), Self::Error>
-    where
-        I: IntoIterator<Item = &'a u8>,
-    {
-        di.send_command(0x10)?;
-        let n = di.send_data_from_iter(buffer)?;
-
-        // empty red channel
-        di.send_command(0x13)?;
-        di.send_data_from_iter(iter::repeat(&0).take(n))?;
-        Ok(())
-    }
-
-    fn turn_on_display<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
-        di.send_command_data(0x04, &[0x00])?; // Power on
-
-        Self::busy_wait(di)?;
-
-        di.send_command_data(0x12, &[0x00])?; // display refresh
-        Self::busy_wait(di)?;
-
-        Ok(())
-    }
-
-    fn sleep<DI: DisplayInterface, DELAY: DelayUs<u32>>(
-        di: &mut DI,
-        delay: &mut DELAY,
-    ) -> Result<(), Self::Error> {
-        di.send_command_data(0x02, &[0x00])?; // turn off dc/dc
-        delay.delay_us(5_000_u32);
-        Self::busy_wait(di)?;
-
-        Ok(())
-    }
-}
-
-impl MultiColorDriver for PLDS {
-    fn update_channel_frame<'a, DI: DisplayInterface, I>(
-        di: &mut DI,
-        channel: u8,
-        buffer: I,
-    ) -> Result<(), Self::Error>
-    where
-        I: IntoIterator<Item = &'a u8>,
-    {
-        if channel == 0 {
-            di.send_command(0x10)?;
-            di.send_data_from_iter(buffer)?;
-        } else if channel == 1 {
-            di.send_command(0x13)?;
-            di.send_data_from_iter(buffer)?;
-        } else {
-            //
-        }
-        Ok(())
-    }
-}

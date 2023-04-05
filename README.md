@@ -11,17 +11,18 @@ NOTE: This is a personal POC project.
 - Fast Driver
 - Gray Scale Drivers
 
+Refer [List of Displays](https://github.com/CursedHardware/epd-datasheet/blob/master/epd-display.csv) to see which driver should be used.
+
 ## How to use
 
 ```rust
-    let spi = Spi::new(
+    let spi = Spi::new_txonly(
         p.SPI2,
         p.PB10,
         p.PC3,
-        p.PC2, // not used
         NoDma,
         NoDma,
-        Hertz(1_000_000),
+        Hertz(8_000_000),
         embassy_stm32::spi::Config::default(),
     );
 
@@ -30,8 +31,8 @@ NOTE: This is a personal POC project.
     let rst = Output::new(p.PA11, Level::Low, Speed::VeryHigh);
     let busy = Input::new(p.PG9, Pull::None);
 
-    let di = EPDInterface::new(spi, dc, cs, rst, busy);
-    let mut display: TriColorEPD<_, DisplaySize400x300, SSD1619A> = TriColorEPD::new(di);
+    // let di = EPDInterfaceNoCS::new(spi, dc, rst, busy);
+    let di = EPDInterface::new(spi, cs, dc, rst, busy);
 
     display.init(&mut delay);
 

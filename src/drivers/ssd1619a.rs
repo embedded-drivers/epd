@@ -16,7 +16,7 @@ use crate::interface::{self, DisplayInterface};
 use embedded_graphics::pixelcolor::Gray4;
 use embedded_hal::blocking::delay::DelayUs;
 
-use super::{Driver, GrayScaleDriver, MultiColorDriver, WaveformDriver};
+use super::{Driver, FastUpdateDriver, GrayScaleDriver, MultiColorDriver, WaveformDriver};
 
 /// Red/Black/White. 400 source outputs, 300 gate outputs,
 /// or Red/Black. 400 source outputs, 300 gate outputs.
@@ -196,7 +196,6 @@ impl GrayScaleDriver<Gray4> for SSD1619A {
             0x00, 0x00, 0x00, 0x00, 0x00,
         ];
         Self::update_waveform(di, &LUT_INCREMENTAL_DIV_16)?;
-        Self::busy_wait(di)?;
         Ok(())
     }
 
@@ -219,45 +218,15 @@ impl GrayScaleDriver<Gray4> for SSD1619A {
         ];
 
         Self::update_waveform(di, &LUT_FAST_UPDATE)?;
-        Self::busy_wait(di)?;
 
         Ok(())
     }
 }
 
-/// A fast B/W driver for the SSD1619A
-pub struct SSD1619AFast;
-
-impl Driver for SSD1619AFast {
-    type Error = interface::DisplayError;
-
-    fn wake_up<DI: DisplayInterface, DELAY: DelayUs<u32>>(
-        di: &mut DI,
-        delay: &mut DELAY,
-    ) -> Result<(), Self::Error> {
-        di.reset(delay, 200_000, 200_000);
-        Self::busy_wait(di)?;
-
-        di.send_command(0x12)?; //swreset
-        Self::busy_wait(di)?;
-
-        // Set analogue then digital block control
-        di.send_command_data(0x74, &[0x54])?;
-        di.send_command_data(0x7e, &[0x3b])?;
-
-        di.send_command_data(0x2b, &[0x03, 0x63])?; // reduce glitch under ACVCOM
-
-        di.send_command_data(0x0c, &[0x8b, 0x9c, 0x96, 0x0f])?; // soft start setting
-
-        di.send_command_data(0x01, &[0x2b, 0x01, 0x00])?; // Driver Output Control - set mux as 300
-
-        di.send_command_data(0x11, &[0b11])?; // data entry mode, X inc, Y inc
-
-        di.send_command_data(0x3C, &[0x01])?; // border wavefrom, HIZ
-
-        // 76 byte, 70 bytes LUT, VGH, VSH1, VSH2, VSL, Frame 1, Frame 2
+impl FastUpdateDriver for SSD1619A {
+    fn setup_fast_waveform<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
         #[rustfmt::skip]
-        const LUT_TEST: [u8; 70] = [
+        const LUT_FAST: [u8; 70] = [
             // VS
             // 00 – VSS
             // 01 – VSH1
@@ -265,11 +234,11 @@ impl Driver for SSD1619AFast {
             // 11 – VSH2
             0b01_00_00_00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // L0 => B
             0b10_00_00_00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // L1 => W
-            0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // L4
+            0b00_00_00_00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // L2 => B
+            0b00_00_00_00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // L3 => W
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // L4
             // TP0                  RP[0]
-            0x12, 0x00, 0x00, 0x00, 0x00,
+            0x1f, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00,
@@ -277,50 +246,26 @@ impl Driver for SSD1619AFast {
             0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00,
         ];
-        di.send_command_data(0x32, &LUT_TEST)?;
+        Self::update_waveform(di, &LUT_FAST)?;
+
+        // gate level: VGH
+        di.send_command_data(0x03, &[0x19])?; // POR, ok
+
+        // source level: VSH1, VSH2, VSL
+        di.send_command_data(0x04, &[0x4b, 0xa8, 0x32])?;
+        // dummy line
+        di.send_command_data(0x3a, &[0x1a])?;
+        // gate line
+        di.send_command_data(0x3b, &[0x0b])?;
+
+        // VCOM
+        // di.send_command_data(0x2c, &[0x78])?;
 
         Self::busy_wait(di)?;
-
         Ok(())
     }
 
-    fn set_shape<DI: DisplayInterface>(di: &mut DI, x: u16, y: u16) -> Result<(), Self::Error> {
-        // Set RAM X - address Start / End position
-        di.send_command_data(0x44, &[0x00, ((x - 1) >> 3) as u8])?;
-
-        // Set RAM Y - address Start / End position
-        di.send_command_data(
-            0x45,
-            &[0x00, 0x00, ((y - 1) & 0xff) as u8, ((y - 1) >> 8) as u8],
-        )?;
-
-        Ok(())
-    }
-
-    fn update_frame<'a, DI: DisplayInterface, I>(di: &mut DI, buffer: I) -> Result<(), Self::Error>
-    where
-        I: IntoIterator<Item = &'a u8>,
-    {
-        di.send_command_data(0x4e, &[0])?; // x start
-        di.send_command_data(0x4f, &[0, 0])?; // y start
-
-        di.send_command(0x24)?;
-        let _n = di.send_data_from_iter(buffer)?;
-
-        // No need to fill R frame with zeros(white), since R channel in LUT is not used
-
-        Ok(())
-    }
-
-    fn turn_on_display<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
-        // 0xf7: always use in system LUT
-        // di.send_command_data(0x22, &[0xf7])?; // Display Update Control 2
-        // 0b1100_0111? LUT 有效
-        // 0b1100_0110
-        di.send_command_data(0x22, &[0b1100_0101])?;
-
-        di.send_command(0x20)?; // master activation
-        Self::busy_wait(di)?;
+    fn restore_normal_waveform<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
         Ok(())
     }
 }

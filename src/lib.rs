@@ -142,6 +142,7 @@ where
     {
         D::wake_up(&mut self.interface, delay)?;
         D::set_shape(&mut self.interface, S::WIDTH as _, S::HEIGHT as _)?;
+        D::setup_fast_waveform(&mut self.interface)?;
         Ok(())
     }
 
@@ -150,7 +151,6 @@ where
     }
 
     pub fn display_frame(&mut self) -> Result<(), D::Error> {
-        D::setup_fast_waveform(&mut self.interface)?;
         D::update_frame(&mut self.interface, self.framebuf.as_bytes())?;
         <D as WaveformDriver>::turn_on_display(&mut self.interface)?;
         Ok(())
@@ -160,6 +160,7 @@ where
         D::restore_normal_waveform(&mut self.interface)?;
         D::update_frame(&mut self.interface, self.framebuf.as_bytes())?;
         <D as WaveformDriver>::turn_on_display(&mut self.interface)?;
+        D::setup_fast_waveform(&mut self.interface)?;
         Ok(())
     }
 
