@@ -10,6 +10,7 @@ pub enum DisplayError {
     DCError,
     CSError,
     BUSYError,
+    InvalidChannel,
 }
 
 /// Trait implemented by displays to provide implemenation of core functionality.
