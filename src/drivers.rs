@@ -10,6 +10,7 @@ pub use self::ssd1680::*;
 pub use self::ssd1675b::*;
 pub use self::pd::*;
 pub use self::uc8176::*;
+pub use self::il3895::*;
 
 mod ssd1608;
 mod ssd1619a;
@@ -17,6 +18,7 @@ mod ssd1675b;
 mod ssd1680;
 mod pd;
 mod uc8176;
+mod il3895;
 
 pub type IL3820 = SSD1608;
 

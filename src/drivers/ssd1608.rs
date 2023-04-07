@@ -9,6 +9,7 @@ use crate::{
 use super::{Driver, GrayScaleDriver, WaveformDriver};
 
 /// B/W 240 x 320
+/// 30 bytes LUT
 pub struct SSD1608;
 
 impl Driver for SSD1608 {

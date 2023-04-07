@@ -92,9 +92,9 @@ impl DisplaySize for DisplaySize104x201 {
 
 /// For 2in13 EPD with Black and White, WIDTH=122, HEIGHT=250.
 #[derive(Clone, Copy)]
-pub struct DisplaySize250x122;
+pub struct DisplaySize122x250;
 
-impl DisplaySize for DisplaySize250x122 {
+impl DisplaySize for DisplaySize122x250 {
     const WIDTH: usize = 122;
     const HEIGHT: usize = 250;
 
@@ -181,7 +181,7 @@ where
             _ => (SIZE::HEIGHT, SIZE::WIDTH),
         };
 
-        if x > width || y > height {
+        if x >= width || y >= height {
             defmt::warn!("overflow set {},{}  {}", x, y, pixel);
 
             return; // TODO: signal this type of error
@@ -216,6 +216,11 @@ where
 
         // The logic is for For black white color
         let byte_offset = y * width_in_byte + x / 8;
+        if byte_offset >= self.buf.len() {
+            defmt::error!("set {},{}  {}", x, y, pixel);
+
+            return; // TODO: signal error
+        }
         if pixel ^ self.inverted {
             self.buf.as_mut_slice()[byte_offset] |= 0x80 >> (x % 8);
         } else {
