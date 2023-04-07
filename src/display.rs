@@ -84,8 +84,8 @@ impl DisplaySize for DisplaySize212x104 {
 pub struct DisplaySize104x201;
 
 impl DisplaySize for DisplaySize104x201 {
-    const WIDTH: usize = 212;
-    const HEIGHT: usize = 104;
+    const WIDTH: usize = 104;
+    const HEIGHT: usize = 201;
 
     const N: usize = (Self::WIDTH / 8 + 1) * Self::HEIGHT;
 }

@@ -7,11 +7,13 @@ use embedded_hal::blocking::delay::DelayUs;
 pub use self::ssd1608::*;
 pub use self::ssd1619a::*;
 pub use self::ssd1680::*;
+pub use self::ssd1675b::*;
 pub use self::pd::*;
 pub use self::uc8176::*;
 
 mod ssd1608;
 mod ssd1619a;
+mod ssd1675b;
 mod ssd1680;
 mod pd;
 mod uc8176;

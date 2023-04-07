@@ -3,7 +3,7 @@
 use core::iter;
 use embedded_hal::blocking::delay::DelayUs;
 
-use super::{Driver, FastUpdateDriver, MultiColorDriver, WaveformDriver};
+use super::{Driver, MultiColorDriver};
 use crate::interface::{DisplayError, DisplayInterface};
 
 /// 400 source x 300 gate, B/W/R
@@ -11,6 +11,7 @@ pub struct UC8176;
 
 impl Driver for UC8176 {
     type Error = DisplayError;
+    // const BLACK_BIT: bool = true;
 
     fn busy_wait<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
         // negative logic
