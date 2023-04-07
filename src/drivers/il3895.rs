@@ -10,6 +10,7 @@ use super::{Driver, FastUpdateDriver, GrayScaleDriver, MultiColorDriver, Wavefor
 /// 30 bytes LUT, format is different from SSD1608.
 /// Command payload bytes is different from SSD1608.
 // https://gitee.com/andelf/epd-playground/blob/master/src/utility/EPD_2in13.cpp
+/// 2in13 B/W 122x250
 pub struct IL3895;
 
 impl Driver for IL3895 {
@@ -95,6 +96,66 @@ impl Driver for IL3895 {
         _delay: &mut DELAY,
     ) -> Result<(), Self::Error> {
         di.send_command_data(0x10, &[0x01])?;
+        Ok(())
+    }
+}
+
+impl WaveformDriver for IL3895 {
+    fn update_waveform<DI: DisplayInterface>(
+        di: &mut DI,
+        lut: &'static [u8],
+    ) -> Result<(), Self::Error> {
+        di.send_command_data(0x32, lut)?;
+        Ok(())
+    }
+}
+
+impl FastUpdateDriver for IL3895 {
+    fn setup_fast_waveform<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
+        // LUT is required
+        #[rustfmt::skip]
+        const LUT_FULL_UPDATE: [u8; 30] = [
+            // VS
+            0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            // PADDING
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            // RP TP
+            0x0F, 0x01,
+            0x00, 0x00,
+            0x00, 0x00,
+            0x00, 0x00,
+            0x00, 0x00,
+            // PADDING
+            0x00, 0x00, 0x00,
+            // R3A_A, dummy line
+            0x00,
+        ];
+        di.send_command_data(0x32, &LUT_FULL_UPDATE)?;
+
+        Ok(())
+    }
+
+    fn restore_normal_waveform<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error> {
+        // LUT is required
+        #[rustfmt::skip]
+        const LUT_FULL_UPDATE: [u8; 30] = [
+            // VS
+            0x22, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x11, 0x00, 0x00,
+            // PADDING
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            // RP TP
+            0x1E, 0x1E,
+            0x1E, 0x1E,
+            0x1E, 0x1E,
+            0x1E, 0x1E,
+            0x01, 0x00,
+            // PADDING
+            0x00, 0x00, 0x00,
+            // R3A_A, dummy line
+            0x00,
+        ];
+        di.send_command_data(0x32, &LUT_FULL_UPDATE)?;
+
         Ok(())
     }
 }
