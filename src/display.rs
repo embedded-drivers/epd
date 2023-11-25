@@ -112,6 +112,15 @@ impl DisplaySize for DisplaySize400x300 {
     const N: usize = (Self::WIDTH / 8) * Self::HEIGHT;
 }
 
+#[derive(Clone, Copy)]
+pub struct DisplaySize800x480;
+
+impl DisplaySize for DisplaySize800x480 {
+    const WIDTH: usize = 800;
+    const HEIGHT: usize = 480;
+
+    const N: usize = (Self::WIDTH / 8) * Self::HEIGHT;
+}
 /// Framebuffer with rotation support
 #[derive(Clone)]
 pub struct FrameBuffer<SIZE: DisplaySize>

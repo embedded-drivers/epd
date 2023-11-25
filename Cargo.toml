@@ -13,7 +13,6 @@ categories = ["embedded", "hardware-support", "no-std"]
 [dependencies]
 embedded-hal = { version = "0.2", features = ["unproven"] }
 # buggy and outdated
-# embedded-graphics = "0.7"
-embedded-graphics = { path = "../embedded-graphics" }
+embedded-graphics = "0.8"
 
 defmt = "0.3"
