@@ -53,7 +53,7 @@ where
 
     pub fn init<DELAY>(&mut self, delay: &mut DELAY) -> Result<(), D::Error>
     where
-        DELAY: embedded_hal::blocking::delay::DelayUs<u32>,
+        DELAY: embedded_hal::delay::DelayNs,
     {
         D::wake_up(&mut self.interface, delay)?;
         D::set_shape(&mut self.interface, S::WIDTH as _, S::HEIGHT as _)?;
@@ -71,14 +71,14 @@ where
 
     pub fn sleep<DELAY>(&mut self, delay: &mut DELAY) -> Result<(), D::Error>
     where
-        DELAY: embedded_hal::blocking::delay::DelayUs<u32>,
+        DELAY: embedded_hal::delay::DelayNs,
     {
         D::sleep(&mut self.interface, delay)
     }
 
     pub fn wake_up<DELAY>(&mut self, delay: &mut DELAY) -> Result<(), D::Error>
     where
-        DELAY: embedded_hal::blocking::delay::DelayUs<u32>,
+        DELAY: embedded_hal::delay::DelayNs,
     {
         D::wake_up(&mut self.interface, delay)?;
         D::set_shape(&mut self.interface, S::WIDTH as _, S::HEIGHT as _)?;
@@ -138,7 +138,7 @@ where
 
     pub fn init<DELAY>(&mut self, delay: &mut DELAY) -> Result<(), D::Error>
     where
-        DELAY: embedded_hal::blocking::delay::DelayUs<u32>,
+        DELAY: embedded_hal::delay::DelayNs,
     {
         D::wake_up(&mut self.interface, delay)?;
         D::set_shape(&mut self.interface, S::WIDTH as _, S::HEIGHT as _)?;
@@ -166,14 +166,14 @@ where
 
     pub fn sleep<DELAY>(&mut self, delay: &mut DELAY) -> Result<(), D::Error>
     where
-        DELAY: embedded_hal::blocking::delay::DelayUs<u32>,
+        DELAY: embedded_hal::delay::DelayNs,
     {
         D::sleep(&mut self.interface, delay)
     }
 
     pub fn wake_up<DELAY>(&mut self, delay: &mut DELAY) -> Result<(), D::Error>
     where
-        DELAY: embedded_hal::blocking::delay::DelayUs<u32>,
+        DELAY: embedded_hal::delay::DelayNs,
     {
         D::wake_up(&mut self.interface, delay)?;
         D::set_shape(&mut self.interface, S::WIDTH as _, S::HEIGHT as _)?;
@@ -230,7 +230,7 @@ where
 
     pub fn init<DELAY>(&mut self, delay: &mut DELAY) -> Result<(), D::Error>
     where
-        DELAY: embedded_hal::blocking::delay::DelayUs<u32>,
+        DELAY: embedded_hal::delay::DelayNs,
     {
         D::wake_up(&mut self.interface, delay)?;
         D::set_shape(&mut self.interface, S::WIDTH as _, S::HEIGHT as _)?;
@@ -253,14 +253,14 @@ where
 
     pub fn sleep<DELAY>(&mut self, delay: &mut DELAY) -> Result<(), D::Error>
     where
-        DELAY: embedded_hal::blocking::delay::DelayUs<u32>,
+        DELAY: embedded_hal::delay::DelayNs,
     {
         D::sleep(&mut self.interface, delay)
     }
 
     pub fn wake_up<DELAY>(&mut self, delay: &mut DELAY) -> Result<(), D::Error>
     where
-        DELAY: embedded_hal::blocking::delay::DelayUs<u32>,
+        DELAY: embedded_hal::delay::DelayNs,
     {
         D::wake_up(&mut self.interface, delay)?;
         D::set_shape(&mut self.interface, S::WIDTH as _, S::HEIGHT as _)?;
@@ -338,7 +338,7 @@ where
 
     pub fn init<DELAY>(&mut self, delay: &mut DELAY) -> Result<(), D::Error>
     where
-        DELAY: embedded_hal::blocking::delay::DelayUs<u32>,
+        DELAY: embedded_hal::delay::DelayNs,
     {
         D::wake_up(&mut self.interface, delay)?;
         D::set_shape(&mut self.interface, SIZE::WIDTH as _, SIZE::HEIGHT as _)?;
@@ -388,7 +388,7 @@ where
 
     pub fn sleep<DELAY>(&mut self, delay: &mut DELAY) -> Result<(), D::Error>
     where
-        DELAY: embedded_hal::blocking::delay::DelayUs<u32>,
+        DELAY: embedded_hal::delay::DelayNs,
     {
         D::sleep(&mut self.interface, delay)
     }

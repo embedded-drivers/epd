@@ -2,8 +2,7 @@
 //!
 //! Up to 20MHz
 
-use core::iter;
-use embedded_hal::blocking::delay::DelayUs;
+use embedded_hal::delay::DelayNs;
 
 use super::{Driver, MultiColorDriver};
 use crate::interface::{DisplayError, DisplayInterface};
@@ -22,7 +21,7 @@ impl Driver for UC8179 {
         Ok(())
     }
 
-    fn wake_up<DI: DisplayInterface, DELAY: DelayUs<u32>>(
+    fn wake_up<DI: DisplayInterface, DELAY: DelayNs>(
         di: &mut DI,
         delay: &mut DELAY,
     ) -> Result<(), Self::Error> {
@@ -80,7 +79,7 @@ impl Driver for UC8179 {
         di.send_command(0x04)?; // Power on
         Self::busy_wait(di)?;
 
-     //   di.send_command(0x12)?; // display refresh
+        //   di.send_command(0x12)?; // display refresh
 
         Self::busy_wait(di)?;
 

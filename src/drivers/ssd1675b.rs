@@ -1,7 +1,7 @@
 //! SSD1675B driver
 
 use core::iter;
-use embedded_hal::blocking::delay::DelayUs;
+use embedded_hal::delay::DelayNs;
 
 use super::{Driver, FastUpdateDriver, MultiColorDriver, WaveformDriver};
 use crate::interface::{DisplayError, DisplayInterface};
@@ -13,7 +13,7 @@ pub struct SSD1675B;
 impl Driver for SSD1675B {
     type Error = DisplayError;
 
-    fn wake_up<DI: DisplayInterface, DELAY: DelayUs<u32>>(
+    fn wake_up<DI: DisplayInterface, DELAY: DelayNs>(
         di: &mut DI,
         delay: &mut DELAY,
     ) -> Result<(), Self::Error> {
@@ -128,7 +128,6 @@ impl WaveformDriver for SSD1675B {
         di.send_command_data(0x32, lut)
     }
 }
-
 
 // TODO: test this
 impl FastUpdateDriver for SSD1675B {

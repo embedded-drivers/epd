@@ -1,25 +1,23 @@
-use core::iter;
-
-use crate::interface::{DisplayError, DisplayInterface};
+use crate::interface::DisplayInterface;
 use embedded_graphics::prelude::GrayColor;
-use embedded_hal::blocking::delay::DelayUs;
+use embedded_hal::delay::DelayNs;
 
+pub use self::il3895::*;
+pub use self::pd::*;
 pub use self::ssd1608::*;
 pub use self::ssd1619a::*;
-pub use self::ssd1680::*;
 pub use self::ssd1675b::*;
-pub use self::pd::*;
+pub use self::ssd1680::*;
 pub use self::uc8176::*;
-pub use self::il3895::*;
 pub use self::uc8179::*;
 
+mod il3895;
+mod pd;
 mod ssd1608;
 mod ssd1619a;
 mod ssd1675b;
 mod ssd1680;
-mod pd;
 mod uc8176;
-mod il3895;
 mod uc8179;
 
 pub type IL3820 = SSD1608;
@@ -31,7 +29,7 @@ pub trait Driver {
     const BLACK_BIT: bool = false;
 
     /// Wake UP and init
-    fn wake_up<DI: DisplayInterface, DELAY: DelayUs<u32>>(
+    fn wake_up<DI: DisplayInterface, DELAY: DelayNs>(
         di: &mut DI,
         delay: &mut DELAY,
     ) -> Result<(), Self::Error>;
@@ -45,7 +43,7 @@ pub trait Driver {
 
     fn turn_on_display<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error>;
 
-    fn sleep<DI: DisplayInterface, DELAY: DelayUs<u32>>(
+    fn sleep<DI: DisplayInterface, DELAY: DelayNs>(
         _di: &mut DI,
         _delay: &mut DELAY,
     ) -> Result<(), Self::Error> {
@@ -99,4 +97,3 @@ pub trait GrayScaleDriver<Color: GrayColor>: WaveformDriver {
 
     fn restore_normal_waveform<DI: DisplayInterface>(di: &mut DI) -> Result<(), Self::Error>;
 }
-

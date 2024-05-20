@@ -1,7 +1,7 @@
 //! UC8176 driver
 
 use core::iter;
-use embedded_hal::blocking::delay::DelayUs;
+use embedded_hal::delay::DelayNs;
 
 use super::{Driver, MultiColorDriver};
 use crate::interface::{DisplayError, DisplayInterface};
@@ -19,7 +19,7 @@ impl Driver for UC8176 {
         Ok(())
     }
 
-    fn wake_up<DI: DisplayInterface, DELAY: DelayUs<u32>>(
+    fn wake_up<DI: DisplayInterface, DELAY: DelayNs>(
         di: &mut DI,
         delay: &mut DELAY,
     ) -> Result<(), Self::Error> {

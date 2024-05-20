@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 categories = ["embedded", "hardware-support", "no-std"]
 
 [dependencies]
-embedded-hal = { version = "0.2", features = ["unproven"] }
+embedded-hal = "1.0"
 # buggy and outdated
 embedded-graphics = "0.8"
 
