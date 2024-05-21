@@ -1,5 +1,5 @@
 use embedded_graphics::pixelcolor::{Gray2, Gray4};
-use embedded_hal::blocking::delay::DelayUs;
+use embedded_hal::delay::DelayNs;
 
 use crate::{
     color::Gray3,
@@ -15,7 +15,7 @@ pub struct SSD1608;
 impl Driver for SSD1608 {
     type Error = interface::DisplayError;
 
-    fn wake_up<DI: DisplayInterface, DELAY: DelayUs<u32>>(
+    fn wake_up<DI: DisplayInterface, DELAY: DelayNs>(
         di: &mut DI,
         delay: &mut DELAY,
     ) -> Result<(), Self::Error> {
@@ -131,7 +131,7 @@ impl Driver for SSD1608 {
         Ok(())
     }
 
-    fn sleep<DI: DisplayInterface, DELAY: DelayUs<u32>>(
+    fn sleep<DI: DisplayInterface, DELAY: DelayNs>(
         di: &mut DI,
         _delay: &mut DELAY,
     ) -> Result<(), Self::Error> {
@@ -146,7 +146,7 @@ pub struct SSD1608Fast;
 impl Driver for SSD1608Fast {
     type Error = interface::DisplayError;
 
-    fn wake_up<DI: DisplayInterface, DELAY: DelayUs<u32>>(
+    fn wake_up<DI: DisplayInterface, DELAY: DelayNs>(
         di: &mut DI,
         delay: &mut DELAY,
     ) -> Result<(), Self::Error> {

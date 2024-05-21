@@ -6,7 +6,7 @@
 // 153 bytes LUT.
 
 use core::iter;
-use embedded_hal::blocking::delay::DelayUs;
+use embedded_hal::delay::DelayNs;
 
 use super::{Driver, FastUpdateDriver, MultiColorDriver, WaveformDriver};
 use crate::interface::{DisplayError, DisplayInterface};
@@ -17,7 +17,7 @@ pub struct SSD1680;
 impl Driver for SSD1680 {
     type Error = DisplayError;
 
-    fn wake_up<DI: DisplayInterface, DELAY: DelayUs<u32>>(
+    fn wake_up<DI: DisplayInterface, DELAY: DelayNs>(
         di: &mut DI,
         delay: &mut DELAY,
     ) -> Result<(), Self::Error> {
@@ -77,7 +77,7 @@ impl Driver for SSD1680 {
         Ok(())
     }
 
-    fn sleep<DI: DisplayInterface, DELAY: DelayUs<u32>>(
+    fn sleep<DI: DisplayInterface, DELAY: DelayNs>(
         di: &mut DI,
         delay: &mut DELAY,
     ) -> Result<(), Self::Error> {

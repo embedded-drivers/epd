@@ -2,7 +2,7 @@
 
 use crate::interface::{DisplayError, DisplayInterface};
 use embedded_graphics::pixelcolor::Gray4;
-use embedded_hal::blocking::delay::DelayUs;
+use embedded_hal::delay::DelayNs;
 
 use super::{Driver, FastUpdateDriver, GrayScaleDriver, MultiColorDriver, WaveformDriver};
 
@@ -16,7 +16,7 @@ pub struct IL3895;
 impl Driver for IL3895 {
     type Error = DisplayError;
 
-    fn wake_up<DI: DisplayInterface, DELAY: DelayUs<u32>>(
+    fn wake_up<DI: DisplayInterface, DELAY: DelayNs>(
         di: &mut DI,
         delay: &mut DELAY,
     ) -> Result<(), Self::Error> {
@@ -91,7 +91,7 @@ impl Driver for IL3895 {
         Ok(())
     }
 
-    fn sleep<DI: DisplayInterface, DELAY: DelayUs<u32>>(
+    fn sleep<DI: DisplayInterface, DELAY: DelayNs>(
         di: &mut DI,
         _delay: &mut DELAY,
     ) -> Result<(), Self::Error> {

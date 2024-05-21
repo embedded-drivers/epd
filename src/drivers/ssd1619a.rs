@@ -15,7 +15,7 @@ use core::iter;
 
 use crate::interface::{self, DisplayInterface};
 use embedded_graphics::pixelcolor::Gray4;
-use embedded_hal::blocking::delay::DelayUs;
+use embedded_hal::delay::DelayNs;
 
 use super::{Driver, FastUpdateDriver, GrayScaleDriver, MultiColorDriver, WaveformDriver};
 
@@ -27,7 +27,7 @@ pub struct SSD1619A;
 impl Driver for SSD1619A {
     type Error = interface::DisplayError;
 
-    fn wake_up<DI: DisplayInterface, DELAY: DelayUs<u32>>(
+    fn wake_up<DI: DisplayInterface, DELAY: DelayNs>(
         di: &mut DI,
         delay: &mut DELAY,
     ) -> Result<(), Self::Error> {
@@ -114,7 +114,7 @@ impl Driver for SSD1619A {
         Ok(())
     }
 
-    fn sleep<DI: DisplayInterface, DELAY: DelayUs<u32>>(
+    fn sleep<DI: DisplayInterface, DELAY: DelayNs>(
         di: &mut DI,
         _delay: &mut DELAY,
     ) -> Result<(), Self::Error> {
