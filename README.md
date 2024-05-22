@@ -26,13 +26,11 @@ Refer [List of Displays](https://github.com/CursedHardware/epd-datasheet/blob/ma
         embassy_stm32::spi::Config::default(),
     );
 
-    let cs = Output::new(p.PC7, Level::Low, Speed::VeryHigh);
     let dc = Output::new(p.PC9, Level::High, Speed::VeryHigh);
     let rst = Output::new(p.PA11, Level::Low, Speed::VeryHigh);
     let busy = Input::new(p.PG9, Pull::None);
 
-    // let di = EPDInterfaceNoCS::new(spi, dc, rst, busy);
-    let di = EPDInterface::new(spi, cs, dc, rst, busy);
+    let di = EpdInterface::new(spi, cs, dc, rst, busy);
 
     display.init(&mut delay);
 

@@ -40,15 +40,15 @@ pub trait DisplayInterface {
         D: DelayNs;
 }
 
-/// EPaperDisplay SPI display interface.
-pub struct EPDInterface<SPI, DC, RST, BUSY> {
+/// E-Paper Display SPI display interface.
+pub struct EpdInterface<SPI, DC, RST, BUSY> {
     spi: SPI,
     dc: DC,
     rst: RST,
     busy: BUSY,
 }
 
-impl<SPI, DC, RST, BUSY> EPDInterface<SPI, DC, RST, BUSY>
+impl<SPI, DC, RST, BUSY> EpdInterface<SPI, DC, RST, BUSY>
 where
     SPI: embedded_hal::spi::SpiDevice,
     DC: OutputPin,
@@ -56,7 +56,7 @@ where
     BUSY: InputPin,
 {
     pub fn new(spi: SPI, dc: DC, rst: RST, busy: BUSY) -> Self {
-        EPDInterface { spi, dc, rst, busy }
+        EpdInterface { spi, dc, rst, busy }
     }
 
     /// Consume the display interface and return
@@ -66,7 +66,7 @@ where
     }
 }
 
-impl<SPI, DC, RST, BUSY> DisplayInterface for EPDInterface<SPI, DC, RST, BUSY>
+impl<SPI, DC, RST, BUSY> DisplayInterface for EpdInterface<SPI, DC, RST, BUSY>
 where
     SPI: embedded_hal::spi::SpiDevice,
     DC: OutputPin,
