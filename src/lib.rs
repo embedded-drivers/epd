@@ -22,11 +22,11 @@ use embedded_graphics::{
     Pixel,
 };
 use interface::DisplayInterface;
-pub use interface::EPDInterface;
+pub use interface::EpdInterface;
 
 use crate::drivers::WaveformDriver;
 
-pub struct EPD<I: DisplayInterface, S: DisplaySize, D: Driver>
+pub struct Epd<I: DisplayInterface, S: DisplaySize, D: Driver>
 where
     [(); S::N]:,
 {
@@ -35,7 +35,7 @@ where
     _phantom: PhantomData<(S, D)>,
 }
 
-impl<DI: DisplayInterface, S: DisplaySize, D: Driver> EPD<DI, S, D>
+impl<DI: DisplayInterface, S: DisplaySize, D: Driver> Epd<DI, S, D>
 where
     [(); S::N]:,
 {
@@ -86,7 +86,7 @@ where
     }
 }
 
-impl<I: DisplayInterface, S: DisplaySize, D: Driver> Dimensions for EPD<I, S, D>
+impl<I: DisplayInterface, S: DisplaySize, D: Driver> Dimensions for Epd<I, S, D>
 where
     [(); S::N]:,
 {
@@ -95,7 +95,7 @@ where
     }
 }
 
-impl<I: DisplayInterface, S: DisplaySize, D: Driver> DrawTarget for EPD<I, S, D>
+impl<I: DisplayInterface, S: DisplaySize, D: Driver> DrawTarget for Epd<I, S, D>
 where
     [(); S::N]:,
 {
@@ -111,7 +111,7 @@ where
 }
 
 /// EPD display backed by fast update LUT, both fast update and full update are supported.
-pub struct FastUpdateEPD<I: DisplayInterface, S: DisplaySize, D: FastUpdateDriver>
+pub struct FastUpdateEpd<I: DisplayInterface, S: DisplaySize, D: FastUpdateDriver>
 where
     [(); S::N]:,
 {
@@ -120,7 +120,7 @@ where
     _phantom: PhantomData<(S, D)>,
 }
 
-impl<DI: DisplayInterface, S: DisplaySize, D: FastUpdateDriver> FastUpdateEPD<DI, S, D>
+impl<DI: DisplayInterface, S: DisplaySize, D: FastUpdateDriver> FastUpdateEpd<DI, S, D>
 where
     [(); S::N]:,
 {
@@ -181,7 +181,7 @@ where
     }
 }
 
-impl<I: DisplayInterface, S: DisplaySize, D: FastUpdateDriver> Dimensions for FastUpdateEPD<I, S, D>
+impl<I: DisplayInterface, S: DisplaySize, D: FastUpdateDriver> Dimensions for FastUpdateEpd<I, S, D>
 where
     [(); S::N]:,
 {
@@ -190,7 +190,7 @@ where
     }
 }
 
-impl<I: DisplayInterface, S: DisplaySize, D: FastUpdateDriver> DrawTarget for FastUpdateEPD<I, S, D>
+impl<I: DisplayInterface, S: DisplaySize, D: FastUpdateDriver> DrawTarget for FastUpdateEpd<I, S, D>
 where
     [(); S::N]:,
 {
@@ -205,7 +205,7 @@ where
     }
 }
 
-pub struct TriColorEPD<I: DisplayInterface, S: DisplaySize, D: Driver>
+pub struct TriColorEpd<I: DisplayInterface, S: DisplaySize, D: Driver>
 where
     [(); S::N]:,
 {
@@ -215,7 +215,7 @@ where
     _phantom: PhantomData<(S, D)>,
 }
 
-impl<DI: DisplayInterface, S: DisplaySize, D: MultiColorDriver> TriColorEPD<DI, S, D>
+impl<DI: DisplayInterface, S: DisplaySize, D: MultiColorDriver> TriColorEpd<DI, S, D>
 where
     [(); S::N]:,
 {
@@ -268,7 +268,7 @@ where
     }
 }
 
-impl<I: DisplayInterface, S: DisplaySize, D: Driver> Dimensions for TriColorEPD<I, S, D>
+impl<I: DisplayInterface, S: DisplaySize, D: Driver> Dimensions for TriColorEpd<I, S, D>
 where
     [(); S::N]:,
 {
@@ -277,7 +277,7 @@ where
     }
 }
 
-impl<I: DisplayInterface, SIZE: DisplaySize, D: Driver> DrawTarget for TriColorEPD<I, SIZE, D>
+impl<I: DisplayInterface, SIZE: DisplaySize, D: Driver> DrawTarget for TriColorEpd<I, SIZE, D>
 where
     [(); SIZE::N]:,
 {
@@ -308,7 +308,7 @@ where
     }
 }
 
-pub struct GrayScaleEPD<C, I: DisplayInterface, SIZE: DisplaySize, D: GrayScaleDriver<C>>
+pub struct GrayScaleEpd<C, I: DisplayInterface, SIZE: DisplaySize, D: GrayScaleDriver<C>>
 where
     C: GrayColor + GrayColorInBits + PixelColor + From<<C as PixelColor>::Raw>,
     [(); SIZE::N]:,
@@ -321,7 +321,7 @@ where
 }
 
 impl<'a, C, I: DisplayInterface, SIZE: DisplaySize, D: GrayScaleDriver<C>>
-    GrayScaleEPD<C, I, SIZE, D>
+    GrayScaleEpd<C, I, SIZE, D>
 where
     C: GrayColor + GrayColorInBits + PixelColor + From<<C as PixelColor>::Raw>,
     [(); SIZE::N]:,
@@ -405,7 +405,7 @@ where
 }
 
 impl<C, DI: DisplayInterface, S: DisplaySize, D: GrayScaleDriver<C>> DrawTarget
-    for GrayScaleEPD<C, DI, S, D>
+    for GrayScaleEpd<C, DI, S, D>
 where
     [(); S::N]:,
     [(); C::BITS_PER_PIXEL]:,
@@ -428,7 +428,7 @@ where
 }
 
 impl<C, DI: DisplayInterface, S: DisplaySize, D: GrayScaleDriver<C>> Dimensions
-    for GrayScaleEPD<C, DI, S, D>
+    for GrayScaleEpd<C, DI, S, D>
 where
     [(); S::N]:,
     [(); C::BITS_PER_PIXEL]:,
