@@ -16,7 +16,7 @@ Refer [List of Displays](https://github.com/CursedHardware/epd-datasheet/blob/ma
 ## How to use
 
 ```rust
-    let spi = Spi::new_txonly(
+    let spi_bus = Spi::new_txonly(
         p.SPI2,
         p.PB10,
         p.PC3,
@@ -25,12 +25,14 @@ Refer [List of Displays](https://github.com/CursedHardware/epd-datasheet/blob/ma
         Hertz(8_000_000),
         embassy_stm32::spi::Config::default(),
     );
+    let cs = Output::new(p.PC7, Level::Low, Speed::VeryHigh);
+    let spi = ExclusiveDevice::new(spi_bus, cs, delay).unwrap();
 
     let dc = Output::new(p.PC9, Level::High, Speed::VeryHigh);
     let rst = Output::new(p.PA11, Level::Low, Speed::VeryHigh);
     let busy = Input::new(p.PG9, Pull::None);
 
-    let di = EpdInterface::new(spi, cs, dc, rst, busy);
+    let di = EpdInterface::new(spi, dc, rst, busy);
 
     display.init(&mut delay);
 

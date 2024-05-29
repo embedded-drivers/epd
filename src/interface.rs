@@ -61,8 +61,8 @@ where
 
     /// Consume the display interface and return
     /// the underlying peripherial driver and GPIO pins used by it
-    pub fn release(self) -> (SPI, DC, BUSY) {
-        (self.spi, self.dc, self.busy)
+    pub fn release(self) -> (SPI, DC, RST, BUSY) {
+        (self.spi, self.dc, self.rst, self.busy)
     }
 }
 
